@@ -1,0 +1,28 @@
+# ── Default: normalise line endings to LF on commit ──────────────────────────
+* text=auto eol=lf
+
+# ── Source code ───────────────────────────────────────────────────────────────
+*.cpp   text eol=lf
+*.hpp   text eol=lf
+*.c     text eol=lf
+*.h     text eol=lf
+*.glsl  text eol=lf
+*.vert  text eol=lf
+*.frag  text eol=lf
+*.py    text eol=lf
+*.cmake text eol=lf
+*.txt   text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+
+# ── Binary assets (no diff, no line-ending conversion) ────────────────────────
+*.spv   binary
+*.bin   binary
+*.exe   binary
+*.dll   binary
+*.lib   binary
+*.a     binary
+*.png   binary
+*.jpg   binary
