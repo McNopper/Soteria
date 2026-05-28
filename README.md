@@ -15,6 +15,27 @@ Includes an **avionics artificial horizon** demo.
 - Pre-compiled pipeline cache embedded as a `constexpr` array
 - Deterministic ordered shutdown
 
+## ASPICE compliance
+
+Soteria follows the **Automotive SPICE® SWE process chain** (SWE.1–SWE.6).
+All work products live under `docs/`:
+
+| Process | Document | Description |
+|---------|----------|-------------|
+| SWE.1 | [docs/SWE.1/SRS.md](docs/SWE.1/SRS.md) | Software Requirements Specification |
+| SWE.2 | [docs/SWE.2/SAD.md](docs/SWE.2/SAD.md) | Software Architectural Design |
+| SWE.2 | [docs/SWE.2/IDD.md](docs/SWE.2/IDD.md) | Interface Design Document |
+| SWE.3 | [docs/SWE.3/DDD.md](docs/SWE.3/DDD.md) | Detailed Design Document |
+| SWE.4 | [docs/SWE.4/UTS.md](docs/SWE.4/UTS.md) | Unit Test Specification |
+| SWE.4 | [docs/SWE.4/UTR.md](docs/SWE.4/UTR.md) | Unit Test Report |
+| SWE.5 | [docs/SWE.5/ITS.md](docs/SWE.5/ITS.md) | Integration Test Specification |
+| SWE.5 | [docs/SWE.5/ITR.md](docs/SWE.5/ITR.md) | Integration Test Report |
+| SWE.6 | [docs/SWE.6/QTS.md](docs/SWE.6/QTS.md) | Qualification Test Specification |
+| SWE.6 | [docs/SWE.6/QTR.md](docs/SWE.6/QTR.md) | Qualification Test Report |
+| Plans | [docs/plans/SVVP.md](docs/plans/SVVP.md) | Software Verification & Validation Plan |
+
+See [docs/README.md](docs/README.md) for the full process overview and traceability summary.
+
 ## Prerequisites
 
 - CMake ≥ 3.22
@@ -40,7 +61,7 @@ cmake --build build --config Debug
 ```powershell
 $env:VK_ADD_DRIVER_FILES  = "C:\VulkanSC-SDK\1.0.21\share\vulkansc\icd.d\vksconvk.json"
 $env:VKSC_EMULATION_DEBUG = "error"
-.\build\simulation\soteria-sim.exe
+.\build\app\soteria-sim.exe
 ```
 
 ## License

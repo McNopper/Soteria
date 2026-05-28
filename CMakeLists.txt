@@ -62,4 +62,13 @@ endif()
 add_compile_definitions($<$<CONFIG:Debug>:VKSC_ENABLE_LOGGING>)
 
 add_subdirectory(engine)
-add_subdirectory(simulation)
+add_subdirectory(app)
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+# Requires: VulkanSC SDK (for soteria-core) + internet access for GTest fetch.
+# Disable with -DSOTERIA_BUILD_TESTS=OFF when the SDK is not available.
+option(SOTERIA_BUILD_TESTS "Build and register unit, integration and qualification tests" ON)
+if(SOTERIA_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

@@ -7,6 +7,10 @@
 ///
 /// @satisfies   SWS_Context_001  Context encapsulates all Vulkan SC handles.
 /// @satisfies   SWS_Context_002  Resource reservation is declared at Init time.
+/// @satisfies   SRS-INIT-001     Init creates instance, physical device, logical device, and queue.
+/// @satisfies   SRS-INIT-002     Resource reservations are declared upfront via VkscContextConfig.
+/// @satisfies   SRS-INIT-003     Two-pass physical device selection with preferredDriverId.
+/// @satisfies   SRS-INIT-005     Shutdown destroys all handles in reverse creation order.
 /// @verifiedby  UT_Context_001
 /// @verifiedby  UT_Context_002
 

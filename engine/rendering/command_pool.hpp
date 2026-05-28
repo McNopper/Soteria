@@ -7,6 +7,9 @@
 /// @satisfies SWS_RENDER_050  CommandPool owns the VkCommandPool handle.
 /// @satisfies SWS_RENDER_051  AllocateBuffers returns kCommandPoolFailed on
 ///                            any allocation error (never silently truncates).
+/// @satisfies SRS-CMD-001     Command pool uses upfront reservation via
+///                            VkCommandPoolMemoryReservationCreateInfo.
+/// @satisfies SRS-CMD-002     Only primary command buffers are allocated.
 
 #ifndef VKSC_ENGINE_RENDERING_COMMAND_POOL_HPP
 #define VKSC_ENGINE_RENDERING_COMMAND_POOL_HPP
