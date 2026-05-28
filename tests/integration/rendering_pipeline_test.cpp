@@ -1,17 +1,20 @@
 /// @file rendering_pipeline_test.cpp
-/// @brief Integration tests for CommandPool and FrameSync on a real VkDevice.
+/// @brief Integration tests for CommandPool, FrameSync, and PipelineCacheSc on a real VkDevice.
 ///
-/// These tests verify that CommandPool and FrameSync can be initialised using
-/// the VkDevice obtained from VkscContext.  They require a VulkanSC-capable
-/// host and are automatically skipped when none is available.
+/// These tests verify that rendering components can be initialised using the VkDevice
+/// obtained from VkscContext.  They require a VulkanSC-capable host and are
+/// automatically skipped when none is available.
 ///
 /// @satisfies SRS-CMD-001   CommandPool reserves command buffer memory upfront.
 /// @satisfies SRS-SYNC-001  FrameSync creates semaphore and fence handles.
+/// @satisfies SRS-PIPE-001  PipelineCacheSc loads compile-time binary cache.
+/// @satisfies SRS-INIT-005  Ordered Shutdown releases all component resources.
 
 #include <gtest/gtest.h>
 #include "engine/core/vksc_context.hpp"
 #include "engine/rendering/command_pool.hpp"
 #include "engine/rendering/frame_sync.hpp"
+#include "engine/rendering/pipeline_cache.hpp"
 
 namespace engine {
 
@@ -27,6 +30,7 @@ protected:
         cfg.resources.commandBuffers  = 4U;
         cfg.resources.semaphores      = 2U;
         cfg.resources.fences          = 1U;
+        cfg.resources.pipelineCaches  = 1U;
 
         Result r = m_ctx.Init(cfg);
         if (!IsOk(r)) {
@@ -38,12 +42,14 @@ protected:
     {
         m_pool.Shutdown(m_ctx.Device());
         m_sync.Shutdown(m_ctx.Device());
+        m_cache.Shutdown(m_ctx.Device());
         m_ctx.Shutdown();
     }
 
-    VkscContext             m_ctx;
-    rendering::CommandPool  m_pool;
-    rendering::FrameSync    m_sync;
+    VkscContext                  m_ctx;
+    rendering::CommandPool       m_pool;
+    rendering::FrameSync         m_sync;
+    rendering::PipelineCacheSc   m_cache;
 };
 
 /// @test IT-004 — CommandPool initialises on a real VkDevice.
@@ -67,7 +73,7 @@ TEST_F(RenderingPipelineTest, FrameSyncInitOnRealDevice)
     EXPECT_NE(m_sync.InFlight(),       VK_NULL_HANDLE);
 }
 
-/// @test IT-006 — CommandPool + FrameSync co-exist on the same VkDevice.
+/// @test IT-006 — CommandPool and FrameSync co-exist on the same VkDevice.
 TEST_F(RenderingPipelineTest, CommandPoolAndFrameSyncCoexist)
 {
     ASSERT_EQ(m_pool.Init(m_ctx.Device(),
@@ -80,6 +86,41 @@ TEST_F(RenderingPipelineTest, CommandPoolAndFrameSyncCoexist)
     EXPECT_NE(m_pool.Handle(),         VK_NULL_HANDLE);
     EXPECT_NE(m_sync.ImageAvailable(), VK_NULL_HANDLE);
     EXPECT_NE(m_sync.InFlight(),       VK_NULL_HANDLE);
+}
+
+/// @test IT-007 — PipelineCacheSc initialises on a real VkDevice.
+TEST_F(RenderingPipelineTest, PipelineCacheScInitOnRealDevice)
+{
+    // A zero-filled block is accepted by the VulkanSC emulation driver.
+    static constexpr uint8_t kDummyData[64]{};
+
+    Result r = m_cache.Init(m_ctx.Device(), kDummyData, sizeof(kDummyData));
+    EXPECT_EQ(r, Result::kOk);
+    EXPECT_NE(m_cache.Handle(), VK_NULL_HANDLE);
+}
+
+/// @test IT-008 — Ordered Shutdown: all component handles null after Shutdown.
+TEST_F(RenderingPipelineTest, OrderedShutdownResetsAllHandles)
+{
+    ASSERT_EQ(m_pool.Init(m_ctx.Device(),
+                          m_ctx.GraphicsQueueFamily(),
+                          64U * 1024U, 4U),
+              Result::kOk);
+    ASSERT_EQ(m_sync.Init(m_ctx.Device()), Result::kOk);
+
+    static constexpr uint8_t kDummyData[64]{};
+    ASSERT_EQ(m_cache.Init(m_ctx.Device(), kDummyData, sizeof(kDummyData)),
+              Result::kOk);
+
+    // Shutdown in reverse initialisation order.
+    m_cache.Shutdown(m_ctx.Device());
+    m_sync.Shutdown(m_ctx.Device());
+    m_pool.Shutdown(m_ctx.Device());
+
+    EXPECT_EQ(m_cache.Handle(),         VK_NULL_HANDLE);
+    EXPECT_EQ(m_sync.ImageAvailable(),  VK_NULL_HANDLE);
+    EXPECT_EQ(m_sync.InFlight(),        VK_NULL_HANDLE);
+    EXPECT_EQ(m_pool.Handle(),          VK_NULL_HANDLE);
 }
 
 } /* namespace engine */

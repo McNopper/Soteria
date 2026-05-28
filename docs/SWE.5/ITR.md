@@ -25,9 +25,12 @@ Test source files: `tests/integration/`
 |---------|---------------------------------------------------------------|----------------------------------------|--------------------------------------------------|--------------------------------------------------|-----------|
 | IT-001  | VkscContext full lifecycle: Init → use Device → Shutdown      | VkscContext                            | Init returns kOk; Device() non-null; Shutdown leaves Device() null | Init returns kOk; Device() non-null; Shutdown leaves Device() null | Pass (skip if no device) |
 | IT-002  | VkscContext double-init guard                                 | VkscContext                            | Second Init() returns kAlreadyInitialised        | Second Init() returns kAlreadyInitialised        | Pass (skip if no device) |
-| IT-003  | CommandPool + FrameSync initialised on VkDevice from context  | VkscContext → CommandPool, FrameSync   | Both Init() calls return kOk; all handles non-null | Both Init() calls return kOk; all handles non-null | Pass (skip if no device) |
-| IT-004  | PipelineCacheSc initialised on VkDevice from context          | VkscContext → PipelineCacheSc          | Init returns kOk; Handle() non-null              | Init returns kOk; Handle() non-null              | Pass (skip if no device) |
-| IT-005  | CommandPool Shutdown followed by FrameSync Shutdown           | CommandPool, FrameSync                 | No crash; all handles null after Shutdown         | No crash; all handles null after Shutdown         | Pass (skip if no device) |
+| IT-003  | VkscContext idempotent Shutdown                               | VkscContext                            | Second Shutdown() does not crash; handles remain null | Second Shutdown() does not crash; handles remain null | Pass (skip if no device) |
+| IT-004  | CommandPool initialised on VkDevice from context              | VkscContext → CommandPool              | Init returns kOk; Handle() non-null              | Init returns kOk; Handle() non-null              | Pass (skip if no device) |
+| IT-005  | FrameSync initialised on VkDevice from context                | VkscContext → FrameSync                | Init returns kOk; all three sync handles non-null | Init returns kOk; all three sync handles non-null | Pass (skip if no device) |
+| IT-006  | CommandPool and FrameSync co-exist on the same device         | VkscContext → CommandPool, FrameSync   | Both Init() calls return kOk; all handles non-null simultaneously | Both Init() calls return kOk; all handles non-null simultaneously | Pass (skip if no device) |
+| IT-007  | PipelineCacheSc initialised on VkDevice from context          | VkscContext → PipelineCacheSc          | Init returns kOk; Handle() non-null              | Init returns kOk; Handle() non-null              | Pass (skip if no device) |
+| IT-008  | Ordered Shutdown in reverse init order clears all handles     | CommandPool, FrameSync, PipelineCacheSc | No crash; all handles null after Shutdown        | No crash; all handles null after Shutdown        | Pass (skip if no device) |
 
 ---
 
@@ -35,10 +38,12 @@ Test source files: `tests/integration/`
 
 | Integration Boundary              | Interfaces Exercised                                      | Verdict    |
 |-----------------------------------|----------------------------------------------------------|------------|
+| VkscContext lifecycle             | Init, double-init guard, idempotent Shutdown             | Pass       |
 | VkscContext → CommandPool         | VkDevice handle transfer, Init, Shutdown                 | Pass       |
-| VkscContext → FrameSync           | VkDevice handle transfer, Init, WaitAndReset, Shutdown   | Pass       |
+| VkscContext → FrameSync           | VkDevice handle transfer, Init, Shutdown                 | Pass       |
 | VkscContext → PipelineCacheSc     | VkDevice handle transfer, Init, Shutdown                 | Pass       |
-| Lifecycle ordering (init/shutdown)| Init before Shutdown, Shutdown before re-init not needed | Pass       |
+| CommandPool + FrameSync coexist   | Both initialised on same device simultaneously           | Pass       |
+| Ordered Shutdown                  | All components shut down in reverse initialisation order | Pass       |
 
 ---
 
@@ -56,9 +61,10 @@ Test source files: `tests/integration/`
 |--------------|-----------------------------------------|-------------------|---------------------------------------------------------|
 | SRS-INIT-001 | VkscContext initialises Vulkan SC stack | IT-001            | Full Init/Shutdown lifecycle verified with real driver. |
 | SRS-INIT-002 | Second Init() returns kAlreadyInitialised | IT-002          | Guard verified with real driver.                        |
-| SRS-CMD-001  | CommandPool reserves command buffers upfront | IT-003       | Init on real device; buffer allocation verified.        |
-| SRS-SYNC-001 | FrameSync creates semaphore + fence     | IT-003            | Handles verified non-null after Init on real device.    |
-| SRS-PIPE-001 | PipelineCacheSc loads binary cache      | IT-004            | Init with test cache data on real device.               |
+| SRS-INIT-005 | Shutdown in reverse order, idempotent   | IT-001, IT-003, IT-008 | Idempotent double-Shutdown and ordered multi-component Shutdown. |
+| SRS-CMD-001  | CommandPool reserves command buffers upfront | IT-004, IT-006 | Init on real device; co-existence verified.            |
+| SRS-SYNC-001 | FrameSync creates semaphore + fence     | IT-005, IT-006    | Handles verified non-null after Init on real device.    |
+| SRS-PIPE-001 | PipelineCacheSc loads binary cache      | IT-007            | Init with test cache data on real device.               |
 
 ---
 

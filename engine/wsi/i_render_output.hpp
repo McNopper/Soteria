@@ -18,6 +18,8 @@
 ///
 /// @satisfies SWS_WSI_001  IRenderOutput abstracts all display backends.
 /// @satisfies SWS_WSI_002  RenderOutputMode is immutable after Init().
+/// @satisfies SRS-WSI-001  Three output modes defined: eDirectDisplay, eArOverlay, eArSeeThroughHud.
+/// @satisfies SRS-WSI-003  IRenderOutput interface enables backend substitution at link time.
 
 #ifndef VKSC_ENGINE_WSI_I_RENDER_OUTPUT_HPP
 #define VKSC_ENGINE_WSI_I_RENDER_OUTPUT_HPP

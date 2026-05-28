@@ -6,7 +6,7 @@ add_executable(soteria-sim
 
 target_include_directories(soteria-sim
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}      # simulation/ (for demo/, rendering/)
+        ${CMAKE_CURRENT_SOURCE_DIR}      # app/ (for demo/, rendering/)
         ${CMAKE_CURRENT_SOURCE_DIR}/..   # project root (engine/ lives here)
 )
 

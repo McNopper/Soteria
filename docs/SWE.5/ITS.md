@@ -77,9 +77,11 @@ Source file: `tests/integration/rendering_pipeline_test.cpp`
 
 | Test ID | Test Name | Objective | Pass Criterion | SRS ID |
 |---------|-----------|-----------|----------------|--------|
-| IT-004 | `CommandPoolAndFrameSyncInitOnRealDevice` | CommandPool and FrameSync init against a real VkDevice | Both `Init` calls return `kOk`; `Handle()` and all three sync handles non-null | SRS-CMD-001, SRS-SYNC-001 |
-| IT-005 | `PipelineCacheScInitOnRealDevice` | PipelineCacheSc init against a real VkDevice | `Init` returns `kOk`; `Handle()` non-null | SRS-PIPE-001 |
-| IT-006 | `OrderedShutdownCommandPoolFrameSync` | Shutdown in reverse init order | No crash; all handles null after Shutdown | SRS-INIT-005 |
+| IT-004 | `CommandPoolInitOnRealDevice` | CommandPool Init against a real VkDevice | `Init` returns `kOk`; `Handle()` non-null | SRS-CMD-001 |
+| IT-005 | `FrameSyncInitOnRealDevice` | FrameSync Init against a real VkDevice | `Init` returns `kOk`; all three sync handles non-null | SRS-SYNC-001 |
+| IT-006 | `CommandPoolAndFrameSyncCoexist` | CommandPool and FrameSync co-exist on the same device | Both `Init` calls return `kOk`; all handles non-null simultaneously | SRS-CMD-001, SRS-SYNC-001 |
+| IT-007 | `PipelineCacheScInitOnRealDevice` | PipelineCacheSc Init against a real VkDevice | `Init` returns `kOk`; `Handle()` non-null | SRS-PIPE-001 |
+| IT-008 | `OrderedShutdownResetsAllHandles` | Shutdown in reverse init order clears all handles | No crash; all component handles null after Shutdown | SRS-INIT-005 |
 
 ---
 
@@ -105,7 +107,7 @@ skip is logged with a diagnostic message.
 |--------|---------------------|-------------------|
 | SRS-INIT-001 | VkscContext initialises Vulkan SC stack | IT-001 |
 | SRS-INIT-002 | Double-Init returns kAlreadyInitialised | IT-002 |
-| SRS-INIT-005 | Shutdown in reverse order, idempotent | IT-001, IT-003, IT-006 |
-| SRS-CMD-001 | CommandPool upfront reservation | IT-004 |
-| SRS-SYNC-001 | FrameSync semaphore + fence creation | IT-004 |
-| SRS-PIPE-001 | PipelineCacheSc binary loading | IT-005 |
+| SRS-INIT-005 | Shutdown in reverse order, idempotent | IT-001, IT-003, IT-008 |
+| SRS-CMD-001 | CommandPool upfront reservation | IT-004, IT-006 |
+| SRS-SYNC-001 | FrameSync semaphore + fence creation | IT-005, IT-006 |
+| SRS-PIPE-001 | PipelineCacheSc binary loading | IT-007 |

@@ -27,7 +27,7 @@ TEST(FrameSyncTest, InitFailsWithNullDevice)
 TEST(FrameSyncTest, HandlesRemainNullAfterFailedInit)
 {
     FrameSync sync;
-    sync.Init(VK_NULL_HANDLE);
+    (void)sync.Init(VK_NULL_HANDLE);
     EXPECT_EQ(sync.ImageAvailable(), VK_NULL_HANDLE);
     EXPECT_EQ(sync.RenderComplete(), VK_NULL_HANDLE);
     EXPECT_EQ(sync.InFlight(),       VK_NULL_HANDLE);

@@ -7,7 +7,7 @@
 ///
 /// @satisfies SRS-INIT-001  VkscContext initialises the Vulkan SC stack.
 /// @satisfies SRS-INIT-002  Second Init() returns kAlreadyInitialised.
-/// @satisfies SRS-INIT-003  Shutdown() resets all handles.
+/// @satisfies SRS-INIT-005  Shutdown() resets all handles.
 
 #include <gtest/gtest.h>
 #include "engine/core/vksc_context.hpp"

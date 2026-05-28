@@ -202,9 +202,9 @@ Abstract interface that every renderer component must implement (`SRS-REND-001`)
 
 | Method | Signature | Contract |
 |--------|-----------|---------|
-| `Init` | `[[nodiscard]] virtual Result Init(...) noexcept = 0` | Allocates all Vulkan resources. |
-| `Shutdown` | `virtual void Shutdown(VkDevice) noexcept = 0` | Releases all resources; must be idempotent. |
-| `RecordFrame` | `virtual void RecordFrame(VkCommandBuffer, uint32_t imageIndex, const AttitudeData&) noexcept = 0` | Records one frame; no GPU submissions or present calls (`SRS-REND-002`). |
+| `Init` | `[[nodiscard]] virtual Result Init(const FrameRendererConfig& cfg) noexcept = 0` | Allocates all Vulkan resources. On failure, releases all already-created resources. |
+| `Shutdown` | `virtual void Shutdown(VkDevice device) noexcept = 0` | Releases all resources; must be idempotent. |
+| `RecordFrame` | `[[nodiscard]] virtual VkCommandBuffer RecordFrame(uint32_t imageIndex, const data::AttitudeData& attitude) noexcept = 0` | Records and ends one frame; returns a ready-to-submit `VkCommandBuffer`. Returns `VK_NULL_HANDLE` on error. No GPU submissions or present calls allowed (`SRS-REND-002`). |
 
 ---
 
@@ -222,13 +222,15 @@ hardware or simulation sources (`SRS-ATT-001`).
 | `rollDeg` | `float` | Right-wing-down positive; range ±180°. |
 | `pitchDeg` | `float` | Nose-up positive; range ±90°. |
 | `headingDeg` | `float` | Clockwise from north; range 0–360°. |
+| `airspeedKt` | `float` | Calibrated airspeed in knots (≥ 0). |
+| `altitudeFt` | `float` | Barometric altitude in feet. |
 | `valid` | `bool` | `false` when sensor data is unavailable; renderer must show failure symbology (`SRS-ATT-002`). |
 
 ### 9.3 Methods
 
 | Method | Signature | Contract |
 |--------|-----------|---------|
-| `GetAttitude` | `[[nodiscard]] virtual AttitudeData GetAttitude() noexcept = 0` | Returns the latest attitude sample; must not allocate or block. |
+| `GetAttitude` | `[[nodiscard]] virtual AttitudeData GetAttitude() const noexcept = 0` | Returns the latest attitude sample; must not allocate or block. |
 
 ---
 
@@ -242,9 +244,12 @@ Abstract interface for frame telemetry reporting (`SRS-TEL-001`).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `frameNumber` | `uint64_t` | Monotonically increasing frame counter. |
-| `renderDurationNs` | `uint64_t` | Wall-clock render time in nanoseconds. |
-| `presentTimestampNs` | `uint64_t` | GPU present timestamp in nanoseconds. |
+| `frameNumber` | `uint64_t` | Monotonically increasing frame counter (starts at 0). |
+| `renderTimeMs` | `float` | GPU submit wall time in milliseconds. |
+| `presentTimeMs` | `float` | `vkQueuePresentKHR` wall time in milliseconds. |
+| `displayedRollDeg` | `float` | Roll angle actually rendered. |
+| `displayedPitchDeg` | `float` | Pitch angle actually rendered. |
+| `framePresented` | `bool` | `false` if present was skipped due to an error. |
 
 ### 10.3 Methods
 
@@ -265,14 +270,102 @@ specific display backend (`SRS-WSI-003`).
 
 | Method | Signature | Contract |
 |--------|-----------|---------|
-| `Init` | `[[nodiscard]] virtual Result Init(...) noexcept = 0` | Creates the surface; returns `kOk` or a `kVksc*` error. |
-| `Shutdown` | `virtual void Shutdown(...) noexcept = 0` | Destroys the surface; idempotent. |
+| `Init` | `[[nodiscard]] virtual Result Init(VkInstance instance, VkPhysicalDevice pd) noexcept = 0` | Creates the `VkSurfaceKHR`; returns `kOk` or a `kVksc*` error. |
+| `Shutdown` | `virtual void Shutdown() noexcept = 0` | Destroys the surface; safe to call before or after `Init`. |
 | `Surface` | `[[nodiscard]] virtual VkSurfaceKHR Surface() const noexcept = 0` | Returns the surface handle; `VK_NULL_HANDLE` before `Init`. |
-| `RequiredFormat` | `[[nodiscard]] virtual VkFormat RequiredFormat() const noexcept = 0` | The pixel format required by this backend (`SRS-SWP-002`). |
+| `ColorFormat` | `[[nodiscard]] virtual VkFormat ColorFormat() const noexcept = 0` | The pixel format the swapchain must use for this backend (`SRS-SWP-002`). |
+| `Mode` | `[[nodiscard]] virtual RenderOutputMode Mode() const noexcept = 0` | Output mode this backend was constructed for; immutable after `Init`. |
+| `Width` | `[[nodiscard]] virtual uint32_t Width() const noexcept = 0` | Render target width in pixels. |
+| `Height` | `[[nodiscard]] virtual uint32_t Height() const noexcept = 0` | Render target height in pixels. |
 
 ---
 
-## 12. Traceability
+## 12. `engine::rendering::SwapchainSc` — `engine/rendering/swapchain.hpp`
+
+### 12.1 Purpose
+
+Manages the `VkSwapchainKHR`, images, and one `VkImageView` per image.
+All arrays are fixed-size (`kMaxImages = 3`); no dynamic allocation (`SRS-SWP-001`).
+
+### 12.2 Configuration — `SwapchainSc::Config`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `physDevice` | `VkPhysicalDevice` | For surface capability queries. |
+| `device` | `VkDevice` | Logical device. |
+| `surface` | `VkSurfaceKHR` | Surface to create the swapchain against. |
+| `queueFamilyIndex` | `uint32_t` | Graphics queue family. |
+| `requiredFormat` | `VkFormat` | Must match `IRenderOutput::ColorFormat()` (`SRS-SWP-002`). |
+| `preferredWidth` | `uint32_t` | Desired width; `0` = use surface `currentExtent`. |
+| `preferredHeight` | `uint32_t` | Desired height; `0` = use surface `currentExtent`. |
+
+### 12.3 Methods
+
+| Method | Signature | Pre-conditions | Returns |
+|--------|-----------|---------------|---------|
+| `Init` | `[[nodiscard]] Result Init(const Config& cfg) noexcept` | All `cfg` handles non-null. | `kOk`, `kVkscSwapchainFailed`. |
+| `Shutdown` | `void Shutdown(VkDevice device) noexcept` | None (safe uninit). | `void` |
+| `Handle` | `[[nodiscard]] VkSwapchainKHR Handle() const noexcept` | None. | Valid handle or `VK_NULL_HANDLE`. |
+| `Format` | `[[nodiscard]] VkFormat Format() const noexcept` | None. | Actual swapchain format. |
+| `Extent` | `[[nodiscard]] VkExtent2D Extent() const noexcept` | None. | Pixel dimensions. |
+| `ImageCount` | `[[nodiscard]] uint32_t ImageCount() const noexcept` | None. | Number of swapchain images (1–3). |
+| `ImageView` | `[[nodiscard]] VkImageView ImageView(uint32_t index) const noexcept` | `index < ImageCount()`. | Image view handle. |
+| `Image` | `[[nodiscard]] VkImage Image(uint32_t index) const noexcept` | `index < ImageCount()`. | Swapchain image handle. |
+
+---
+
+## 13. `engine::rendering::VertexBuffer` — `engine/rendering/vertex_buffer.hpp`
+
+### 13.1 Purpose
+
+Allocates a host-visible, host-coherent `VkBuffer` with persistent mapping.
+The buffer is mapped once at `Init` and remains mapped until `Shutdown`
+(`SRS-VBF-001`, `SRS-VBF-002`).
+
+### 13.2 Methods
+
+| Method | Signature | Pre-conditions | Returns |
+|--------|-----------|---------------|---------|
+| `Init` | `[[nodiscard]] Result Init(VkDevice device, VkPhysicalDevice physDevice, uint32_t sizeBytes) noexcept` | `device` and `physDevice` non-null; `sizeBytes > 0`. | `kOk`, `kInvalidArgument`, `kVkscBufferFailed`. |
+| `Shutdown` | `void Shutdown(VkDevice device) noexcept` | None (safe uninit). | `void` |
+| `Buffer` | `[[nodiscard]] VkBuffer Buffer() const noexcept` | None. | `VkBuffer` handle or `VK_NULL_HANDLE`. |
+| `MappedPtr` | `[[nodiscard]] void* MappedPtr() const noexcept` | Between `Init` and `Shutdown`. | Persistent write pointer. |
+| `MappedBytes` | `[[nodiscard]] uint8_t* MappedBytes() const noexcept` | Between `Init` and `Shutdown`. | Byte-typed write pointer. |
+| `SizeBytes` | `[[nodiscard]] uint32_t SizeBytes() const noexcept` | None. | Allocated size in bytes. |
+
+---
+
+## 14. `engine::wsi::DisplayOutput` — `engine/wsi/display_output.hpp`
+
+### 14.1 Purpose
+
+Concrete `IRenderOutput` backend for opaque RGB direct-to-display output.
+Uses `VK_KHR_display` to create a `VkDisplayPlaneSurfaceKHR` (`SRS-WSI-001`,
+`SRS-WSI-002`).
+
+### 14.2 Behaviour
+
+- Enumerates physical displays (up to `kMaxDisplays = 4`).
+- Selects the first available display; chooses the mode with the largest visible area.
+- Selects the first display plane that supports the chosen display.
+- Fixed pixel format: `VK_FORMAT_B8G8R8A8_UNORM`.
+- Fixed mode: `RenderOutputMode::eDirectDisplay`.
+
+### 14.3 Methods
+
+| Method | Signature | Returns |
+|--------|-----------|---------|
+| `Init` | `[[nodiscard]] Result Init(VkInstance, VkPhysicalDevice) noexcept override` | `kOk`, `kVkscNoDisplay` (no display found), `kVkscSurfaceFailed`. |
+| `Shutdown` | `void Shutdown() noexcept override` | `void`; safe to call before `Init`. |
+| `Surface` | `[[nodiscard]] VkSurfaceKHR Surface() const noexcept override` | `VkDisplayPlaneSurfaceKHR` or `VK_NULL_HANDLE`. |
+| `ColorFormat` | `[[nodiscard]] VkFormat ColorFormat() const noexcept override` | `VK_FORMAT_B8G8R8A8_UNORM` (constant). |
+| `Mode` | `[[nodiscard]] RenderOutputMode Mode() const noexcept override` | `eDirectDisplay` (constant). |
+| `Width` | `[[nodiscard]] uint32_t Width() const noexcept override` | Display width in pixels (available after `Init`). |
+| `Height` | `[[nodiscard]] uint32_t Height() const noexcept override` | Display height in pixels (available after `Init`). |
+
+---
+
+## 15. Traceability
 
 | IDD Section | SRS ID        | Header file                                    |
 |-------------|---------------|------------------------------------------------|
@@ -283,5 +376,8 @@ specific display backend (`SRS-WSI-003`).
 | §7          | SRS-PIPE-001, SRS-PIPE-002 | `engine/rendering/pipeline_cache.hpp` |
 | §8          | SRS-REND-001, SRS-REND-002 | `engine/rendering/i_frame_renderer.hpp` |
 | §9          | SRS-ATT-001…003 | `engine/data/i_attitude_source.hpp`          |
-| §10         | SRS-TEL-001    | `engine/data/i_frame_report.hpp`               |
+| §10         | SRS-TEL-001, SRS-TEL-002 | `engine/data/i_frame_report.hpp`        |
 | §11         | SRS-WSI-001…003 | `engine/wsi/i_render_output.hpp`             |
+| §12         | SRS-SWP-001…003 | `engine/rendering/swapchain.hpp`             |
+| §13         | SRS-VBF-001, SRS-VBF-002 | `engine/rendering/vertex_buffer.hpp`    |
+| §14         | SRS-WSI-001, SRS-WSI-002 | `engine/wsi/display_output.hpp`         |

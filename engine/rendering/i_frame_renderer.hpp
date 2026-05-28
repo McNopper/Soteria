@@ -26,6 +26,8 @@
 /// @satisfies SWS_RENDER_100  IFrameRenderer decouples rendering from presentation.
 /// @satisfies SWS_RENDER_101  RecordFrame must be called only after the caller has
 ///                            confirmed the GPU is not reading from the target framebuffer.
+/// @satisfies SRS-REND-001    Every renderer implements Init/Shutdown/RecordFrame.
+/// @satisfies SRS-REND-002    RecordFrame returns a command buffer; does not accept one.
 
 #ifndef VKSC_ENGINE_RENDERING_I_FRAME_RENDERER_HPP
 #define VKSC_ENGINE_RENDERING_I_FRAME_RENDERER_HPP

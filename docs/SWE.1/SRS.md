@@ -153,14 +153,19 @@ of destruction.
 The software shall support at minimum three output surface modes selectable at
 integration time:
 
-| Mode identifier         | Vulkan format              | Use case                  |
-|-------------------------|----------------------------|---------------------------|
-| `eDirectDisplay`        | `VK_FORMAT_B8G8R8A8_UNORM` | Standalone display panel  |
-| `eArOverlay`            | `VK_FORMAT_R8G8B8A8_UNORM` | Composited AR overlay     |
-| `eArSeeThroughHud`      | `VK_FORMAT_R16G16B16A16_SFLOAT` | HDR see-through HUD  |
+| Mode identifier         | Vulkan format              | Use case                  | v0.1.0 status        |
+|-------------------------|----------------------------|---------------------------|----------------------|
+| `eDirectDisplay`        | `VK_FORMAT_B8G8R8A8_UNORM` | Standalone display panel  | ✅ Implemented        |
+| `eArOverlay`            | `VK_FORMAT_R8G8B8A8_UNORM` | Composited AR overlay     | 🔲 Planned           |
+| `eArSeeThroughHud`      | `VK_FORMAT_R16G16B16A16_SFLOAT` | HDR see-through HUD  | 🔲 Planned           |
+
+The interface (`IRenderOutput`) and all three mode identifiers (`RenderOutputMode` enum)
+are defined and stable.  Only the `eDirectDisplay` backend (`DisplayOutput`) is
+implemented in v0.1.0; the remaining backends are reserved for future releases.
 
 - Source: `engine/wsi/i_render_output.hpp`, system integrator requirement  
-- Acceptance: Each mode compiles and initialises without error on a reference target.  
+- Acceptance: Each mode identifier compiles and resolves to a distinct `RenderOutputMode`
+  value; `eDirectDisplay` initialises and creates a surface without error on a reference target.  
 - ASIL: D
 
 ---
@@ -351,11 +356,11 @@ buffers are not used.
 **SRS-REND-001**  
 Every renderer component shall implement the `IFrameRenderer` interface, which defines:
 
-| Method       | Contract                                             |
-|--------------|------------------------------------------------------|
-| `Init`       | Allocate all Vulkan resources; return Result         |
-| `Shutdown`   | Release all Vulkan resources; must be idempotent     |
-| `RecordFrame`| Record one frame into the provided command buffer    |
+| Method       | Contract                                                              |
+|--------------|-----------------------------------------------------------------------|
+| `Init`       | Allocate all Vulkan resources; return `Result`.                       |
+| `Shutdown`   | Release all Vulkan resources; must be idempotent.                     |
+| `RecordFrame`| Record one frame; return a ready-to-submit `VkCommandBuffer`.        |
 
 - Source: `engine/rendering/i_frame_renderer.hpp`  
 - Acceptance: Any class that implements `IFrameRenderer` can replace `HorizonRenderer`
@@ -365,13 +370,21 @@ Every renderer component shall implement the `IFrameRenderer` interface, which d
 ---
 
 **SRS-REND-002**  
-`IFrameRenderer::RecordFrame` shall accept the command buffer, the framebuffer image
-index, and the current `AttitudeData`; it shall not perform GPU submissions or present
-operations — those are the caller's responsibility.
+`IFrameRenderer::RecordFrame` shall accept the framebuffer image index and the current
+`AttitudeData`; it shall allocate, record, and end a command buffer internally, and
+**return** that `VkCommandBuffer` to the caller — it shall not accept an externally-owned
+command buffer.  The caller is responsible for GPU submission and present operations;
+`RecordFrame` shall contain no `vkQueueSubmit`, `vkQueuePresentKHR`, or equivalent calls.
+
+```cpp
+[[nodiscard]] virtual VkCommandBuffer RecordFrame(
+    uint32_t                  imageIndex,
+    const data::AttitudeData& attitude) noexcept = 0;
+```
 
 - Source: `engine/rendering/i_frame_renderer.hpp`, separation-of-concerns safety pattern  
-- Acceptance: `RecordFrame` contains no `vkQueueSubmit`, `vkQueuePresentKHR`, or
-  equivalent calls; confirmed by static analysis.  
+- Acceptance: `RecordFrame` returns a valid `VkCommandBuffer`; no submission calls
+  appear inside the method; confirmed by code review and static analysis.  
 - ASIL: D
 
 ---
