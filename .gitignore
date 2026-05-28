@@ -67,3 +67,5 @@ mars_audit.jsonl
 artifacts/
 .mars/server.log
 .mars/server_err.log
+.mars/state.json          # transient state machine snapshot; regenerated on each run
+# .mars/config.yaml is intentionally tracked — it is the project's MARS workflow config
