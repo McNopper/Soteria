@@ -117,7 +117,7 @@ context:
     # ------------------------------------------------------------------
     swe1_requirements:
       artifact: srs
-      output: aspice/SWE.1/SRS.md
+      output: docs/SWE.1/SRS.md
       preexisting: true
       context_files:
         - README.md
@@ -129,9 +129,9 @@ context:
     # ------------------------------------------------------------------
     swe2_architecture:
       artifact: sad
-      output: aspice/SWE.2/SAD.md
+      output: docs/SWE.2/SAD.md
       context_files:
-        - aspice/SWE.1/SRS.md
+        - docs/SWE.1/SRS.md
         - engine/
         - CMakeLists.txt
       extra_context: |
@@ -152,15 +152,15 @@ context:
     # ------------------------------------------------------------------
     swe3_detailed_design:
       artifact: ddd
-      output: aspice/SWE.3/DDD.md
+      output: docs/SWE.3/DDD.md
       extra_artifacts:
         - name: source_code
           output: engine/
           type: source_code
           preexisting: true   # Real Vulkan SC C++ already exists — DDD documents it
       context_files:
-        - aspice/SWE.1/SRS.md
-        - aspice/SWE.2/SAD.md
+        - docs/SWE.1/SRS.md
+        - docs/SWE.2/SAD.md
         - engine/
       extra_context: |
         The source code in `engine/` is ALREADY WRITTEN (real, existing C++ implementation).
@@ -183,13 +183,13 @@ context:
     # ------------------------------------------------------------------
     swe4_unit_verification:
       artifact: utr
-      output: aspice/SWE.4/UTR.md
+      output: docs/SWE.4/UTR.md
       extra_artifacts:
         - name: unit_tests
           output: tests/unit/
           type: test_code
       context_files:
-        - aspice/SWE.3/DDD.md
+        - docs/SWE.3/DDD.md
         - engine/core/result.hpp
         - engine/core/vksc_context.hpp
         - engine/core/safety_macros.hpp
@@ -240,14 +240,14 @@ context:
     # ------------------------------------------------------------------
     swe5_integration:
       artifact: itr
-      output: aspice/SWE.5/ITR.md
+      output: docs/SWE.5/ITR.md
       extra_artifacts:
         - name: integration_tests
           output: tests/integration/
           type: test_code
       context_files:
-        - aspice/SWE.2/SAD.md
-        - aspice/SWE.4/UTR.md
+        - docs/SWE.2/SAD.md
+        - docs/SWE.4/UTR.md
         - engine/core/result.hpp
         - engine/core/vksc_context.hpp
         - engine/rendering/command_pool.hpp
@@ -296,16 +296,16 @@ context:
     # ------------------------------------------------------------------
     swe6_qualification:
       artifact: qtr
-      output: aspice/SWE.6/QTR.md
+      output: docs/SWE.6/QTR.md
       extra_artifacts:
         - name: qualification_tests
           output: tests/qualification/
           type: test_code
       context_files:
-        - aspice/SWE.1/SRS.md
-        - aspice/SWE.5/ITR.md
-        - aspice/SWE.2/SAD.md
-        - aspice/SWE.3/DDD.md
+        - docs/SWE.1/SRS.md
+        - docs/SWE.5/ITR.md
+        - docs/SWE.2/SAD.md
+        - docs/SWE.3/DDD.md
         - engine/core/result.hpp
         - engine/core/vksc_context.hpp
         - engine/rendering/command_pool.hpp
