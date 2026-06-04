@@ -6,11 +6,11 @@
 #
 # Usage
 # -----
-#   mars-server --project-config D:/Development/GitHub/Soteria/.mars/config.yaml
+#   mars-server --project-config C:/Development/GitHub/Soteria/.mars/config.yaml
 #
 # Or interactively from the MARS CLI:
 #   /spawn coordinator
-#   /skill load_project {"config_path": "D:/Development/GitHub/Soteria/.mars/config.yaml"}
+#   /skill load_project {"config_path": "C:/Development/GitHub/Soteria/.mars/config.yaml"}
 #   /skill run_all
 # ---------------------------------------------------------------------------
 
@@ -64,14 +64,20 @@ llm:
     reviewer:             copilot/gpt-4o
     safety_engineer:      copilot/gpt-4o
   default: copilot/gpt-4o
-  # Tier mapping for phase coordination workers (overrides roles when tier-based spawning is used)
-  # Tier 1 = cheap/local  →  switch to ollama/llama3.2 when local GPU available
-  # Tier 2 = capable      →  copilot/gpt-4o for most workers
-  # Tier 3 = frontier     →  upgrade to anthropic/claude-opus-4-7 when API key available
+  # All-free tier map (mirrors MARS's .mars/config.yaml). Soteria is the HARDER
+  # test project (ASIL-D / MISRA / C++) and is run ALL FREE on purpose — no paid
+  # Anthropic. Tier 1 is the truly-free local Ollama model; tiers 2-3 use the
+  # free (Copilot-included) gpt-4o family. To trade money for quality on the hard
+  # ASIL-D phases, point tier 3 at a premium model (anthropic/claude-opus-4-8
+  # with ANTHROPIC_API_KEY).
+  # NOTE: agile-spice-swe spawns phase coordinators at tier 3 and workers at
+  # tier 2 — it does NOT route any phase to tier 1, so the local model stays
+  # dormant unless the process is changed to use tier 1 (unlike agile-spice-mars,
+  # which runs SWE.1/4/5/6 on tier 1).
   tiers:
-    "1": copilot/gpt-4o
-    "2": copilot/gpt-4o
-    "3": copilot/gpt-4o
+    "1": ollama/qwen2.5:7b   # free, local (llama3.2/mistral too weak for tool use)
+    "2": copilot/gpt-4o      # free (Copilot-included)
+    "3": copilot/gpt-4o      # free (Copilot-included); swap to a premium model for max quality
 
 # ---------------------------------------------------------------------------
 # Execution command mappings
