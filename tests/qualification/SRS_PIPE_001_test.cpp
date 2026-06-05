@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 #include "engine/core/vksc_context.hpp"
 #include "engine/rendering/pipeline_cache.hpp"
+#include "app/rendering/pipeline_cache_data.hpp"
 
 namespace engine {
 
@@ -50,22 +51,36 @@ TEST(Qualification_SRS_PIPE_002, ZeroSizeReturnsInvalidArgument)
 
 TEST(Qualification_SRS_PIPE_001, InitCreatesPipelineCacheHandle)
 {
+    // Vulkan SC requires every pipeline cache to be declared in the device
+    // reservation at vkCreateDevice time; vkCreatePipelineCache then only
+    // accepts that same pre-compiled, driver-specific binary.  An arbitrary or
+    // zero-filled blob is rejected with VK_ERROR_INVALID_PIPELINE_CACHE_DATA.
+    // We therefore mirror production (app/main.cpp): declare the embedded cache
+    // in the reservation and prefer the emulation driver it was compiled for.
+    VkPipelineCacheCreateInfo pcCI{};
+    pcCI.sType           = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+    pcCI.initialDataSize = sim::kPipelineCacheDataSize;
+    pcCI.pInitialData    = sim::kPipelineCacheData;
+
     VkscContext ctx;
     VkscContextConfig cfg{};
     cfg.resources.pipelineCaches = 1U;
+    cfg.pipelineCacheInfos       = &pcCI;
+    cfg.pipelineCacheInfoCount   = 1U;
+    cfg.preferredDriverId        = VK_DRIVER_ID_VULKAN_SC_EMULATION_ON_VULKAN;
 
     Result r = ctx.Init(cfg);
     if (!IsOk(r)) {
-        GTEST_SKIP() << "VulkanSC not available (" << ResultToString(r) << ")";
+        // No VulkanSC device, or no driver whose pre-compiled cache matches the
+        // embedded binary on this host — environment precondition not met.
+        GTEST_SKIP() << "VulkanSC emulation with matching pipeline cache not available ("
+                     << ResultToString(r) << ")";
     }
 
-    // Minimal valid binary: a zero-filled block.  The VulkanSC driver accepts
-    // any non-empty blob; the actual compiled pipelines are declared separately
-    // via VkPipelineCacheCreateInfo in VkscContextConfig.
-    static constexpr uint8_t kDummyCacheData[64]{};
-
     rendering::PipelineCacheSc cache;
-    ASSERT_EQ(cache.Init(ctx.Device(), kDummyCacheData, sizeof(kDummyCacheData)),
+    ASSERT_EQ(cache.Init(ctx.Device(),
+                         sim::kPipelineCacheData,
+                         sim::kPipelineCacheDataSize),
               Result::kOk);
     EXPECT_NE(cache.Handle(), VK_NULL_HANDLE);
 

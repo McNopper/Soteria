@@ -15,6 +15,7 @@
 #include "engine/rendering/command_pool.hpp"
 #include "engine/rendering/frame_sync.hpp"
 #include "engine/rendering/pipeline_cache.hpp"
+#include "app/rendering/pipeline_cache_data.hpp"
 
 namespace engine {
 
@@ -24,6 +25,15 @@ class RenderingPipelineTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        // Declare the pre-compiled pipeline cache in the device reservation,
+        // exactly as production (app/main.cpp) does.  Vulkan SC only accepts a
+        // cache at vkCreatePipelineCache time if it was declared here, and the
+        // embedded binary is built for the emulation driver — so prefer it.
+        m_pcCI                 = VkPipelineCacheCreateInfo{};
+        m_pcCI.sType           = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+        m_pcCI.initialDataSize = sim::kPipelineCacheDataSize;
+        m_pcCI.pInitialData    = sim::kPipelineCacheData;
+
         VkscContextConfig cfg{};
         // Reserve the objects we will create during these tests.
         cfg.resources.commandPools    = 1U;
@@ -31,6 +41,9 @@ protected:
         cfg.resources.semaphores      = 2U;
         cfg.resources.fences          = 1U;
         cfg.resources.pipelineCaches  = 1U;
+        cfg.pipelineCacheInfos        = &m_pcCI;
+        cfg.pipelineCacheInfoCount    = 1U;
+        cfg.preferredDriverId         = VK_DRIVER_ID_VULKAN_SC_EMULATION_ON_VULKAN;
 
         Result r = m_ctx.Init(cfg);
         if (!IsOk(r)) {
@@ -47,6 +60,7 @@ protected:
     }
 
     VkscContext                  m_ctx;
+    VkPipelineCacheCreateInfo    m_pcCI{};
     rendering::CommandPool       m_pool;
     rendering::FrameSync         m_sync;
     rendering::PipelineCacheSc   m_cache;
@@ -91,10 +105,11 @@ TEST_F(RenderingPipelineTest, CommandPoolAndFrameSyncCoexist)
 /// @test IT-007 — PipelineCacheSc initialises on a real VkDevice.
 TEST_F(RenderingPipelineTest, PipelineCacheScInitOnRealDevice)
 {
-    // A zero-filled block is accepted by the VulkanSC emulation driver.
-    static constexpr uint8_t kDummyData[64]{};
-
-    Result r = m_cache.Init(m_ctx.Device(), kDummyData, sizeof(kDummyData));
+    // The embedded cache was declared in the device reservation during SetUp,
+    // so the VulkanSC driver accepts this same binary here.
+    Result r = m_cache.Init(m_ctx.Device(),
+                            sim::kPipelineCacheData,
+                            sim::kPipelineCacheDataSize);
     EXPECT_EQ(r, Result::kOk);
     EXPECT_NE(m_cache.Handle(), VK_NULL_HANDLE);
 }
@@ -108,8 +123,9 @@ TEST_F(RenderingPipelineTest, OrderedShutdownResetsAllHandles)
               Result::kOk);
     ASSERT_EQ(m_sync.Init(m_ctx.Device()), Result::kOk);
 
-    static constexpr uint8_t kDummyData[64]{};
-    ASSERT_EQ(m_cache.Init(m_ctx.Device(), kDummyData, sizeof(kDummyData)),
+    ASSERT_EQ(m_cache.Init(m_ctx.Device(),
+                           sim::kPipelineCacheData,
+                           sim::kPipelineCacheDataSize),
               Result::kOk);
 
     // Shutdown in reverse initialisation order.

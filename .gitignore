@@ -61,12 +61,3 @@ desktop.ini
 # ── Crash dumps ───────────────────────────────────────────────────────────────
 *.dmp
 *.dump
-
-# ── MARS automation runtime artefacts (not part of the committed project) ─────
-mars_audit.jsonl
-artifacts/
-.mars/server.log
-.mars/server_err.log
-# transient state machine snapshot; regenerated on each MARS run
-.mars/state.json
-# .mars/config.yaml is intentionally tracked — it is the project's MARS workflow config
