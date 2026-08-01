@@ -1,11 +1,9 @@
 /// @file result.hpp
 /// @brief Engine-wide result / error-code enumeration.
 ///
-/// Exceptions are disabled (-fno-exceptions).  All fallible functions return
-/// Result and are marked [[nodiscard]] so callers cannot silently ignore them.
-///
-/// @satisfies   SWS_Result_001  Error codes replace exceptions throughout the engine.
-/// @verifiedby  UT_Result_001
+/// Exceptions are disabled (/EHs-c-).  All fallible functions return
+/// Result and are marked [[nodiscard]] so callers cannot silently ignore them
+/// (MISRA C++:2023 Rule 0.1.2).
 
 #ifndef VKSC_ENGINE_CORE_RESULT_HPP
 #define VKSC_ENGINE_CORE_RESULT_HPP
@@ -54,8 +52,12 @@ enum class Result : int32_t
 /// @brief Return a human-readable description of @p r.
 ///
 /// The returned pointer is a string literal — its lifetime is the program lifetime.
-/// No default label: the compiler will warn if a new Result value is added
-/// but not handled here (-Wswitch).
+///
+/// MISRA C++:2023 Rule 9.4.2 requires a default label in every switch.
+/// Exhaustiveness is still enforced by the compiler: -Wswitch-enum (enabled in
+/// CMakeLists.txt) warns when an enumerator is not handled even though a
+/// default label is present.  The default branch additionally protects against
+/// out-of-range enum values produced by invalid casts.
 [[nodiscard]] constexpr const char* ResultToString(const Result r) noexcept
 {
     const char* str{"Unknown"};
@@ -84,6 +86,7 @@ enum class Result : int32_t
         case Result::kVkscSurfaceLost:          str = "VkscSurfaceLost";          break;
         case Result::kAlreadyInitialised:       str = "AlreadyInitialised";       break;
         case Result::kVkscTimeoutFailed:        str = "VkscTimeoutFailed";        break;
+        default:                                str = "Unknown";                  break;
     }
     return str;
 }

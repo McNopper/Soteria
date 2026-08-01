@@ -3,6 +3,7 @@
 
 #include "horizon_geometry.hpp"
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 
@@ -30,7 +31,7 @@ Vertex2D AttToNdc(float xAtt, float yAtt,
 // ---- ComputeHorizonVertices -------------------------------------------------
 
 void ComputeHorizonVertices(float rollDeg, float pitchDeg, float aspectRatio,
-                             Vertex2D (&verts)[kHorizonVertexCount]) noexcept
+                             std::array<Vertex2D, kHorizonVertexCount>& verts) noexcept
 {
     const float rollRad  = rollDeg  * kDegToRad;
     const float cosR     = std::cos(rollRad);
@@ -50,8 +51,8 @@ void ComputeHorizonVertices(float rollDeg, float pitchDeg, float aspectRatio,
     // ---- Pitch ladder [2..13] (+/-5, +/-10, +/-15 degrees) -----------------
     // Line half-widths in NDC.  Divided by aspectRatio so they appear as
     // equal-length lines on screen regardless of display resolution.
-    static constexpr float kPitchAngles[3U]{5.0F, 10.0F, 15.0F};
-    static constexpr float kPitchWidths[3U]{0.22F, 0.30F, 0.38F};
+    static constexpr std::array<float, 3U> kPitchAngles{5.0F, 10.0F, 15.0F};
+    static constexpr std::array<float, 3U> kPitchWidths{0.22F, 0.30F, 0.38F};
 
     for (uint32_t i{0U}; i < 3U; ++i)
     {
@@ -109,7 +110,7 @@ void ComputeHorizonVertices(float rollDeg, float pitchDeg, float aspectRatio,
 
     // ---- Roll tick marks [68..87] ------------------------------------------
     // Tick marks at +/-10, +/-20, +/-30, +/-45, +/-60 degrees on the arc.
-    static constexpr float kTickAngles[5U]{10.0F, 20.0F, 30.0F, 45.0F, 60.0F};
+    static constexpr std::array<float, 5U> kTickAngles{10.0F, 20.0F, 30.0F, 45.0F, 60.0F};
     static constexpr float kTickOuter{kArcR};
     static constexpr float kTickInner{kArcR - 0.05F};
 

@@ -11,7 +11,7 @@
 #include "../../engine/core/log.hpp"
 #include "../../engine/rendering/swapchain.hpp"
 
-#include <algorithm>    // std::copy
+#include <array>
 #include <cmath>
 
 namespace sim {
@@ -136,16 +136,19 @@ VkCommandBuffer HorizonRenderer::RecordFrame(
     const float pitchDeg = attitude.valid ? attitude.pitchDeg : 0.0F;
 
     // Update vertex buffer — host-coherent, no explicit flush needed.
+    // Write() is bounds-checked against the allocated buffer size.
     const float aspectRatio =
         (m_extent.height > 0U)
         ? (static_cast<float>(m_extent.width) / static_cast<float>(m_extent.height))
         : 1.0F;
 
-    Vertex2D verts[kHorizonVertexCount]{};
+    std::array<Vertex2D, kHorizonVertexCount> verts{};
     ComputeHorizonVertices(rollDeg, pitchDeg, aspectRatio, verts);
-    const auto* const srcBytes =
-        static_cast<const uint8_t*>(static_cast<const void*>(verts));
-    std::copy(srcBytes, srcBytes + kVBOBytes, m_vertexBuffer.MappedBytes());
+    if (!engine::IsOk(m_vertexBuffer.Write(verts.data(), kVBOBytes)))
+    {
+        engine::log::Error("HorizonRenderer: vertex buffer write failed.");
+        return VK_NULL_HANDLE;
+    }
 
     // Begin command buffer.
     VkCommandBufferBeginInfo beginInfo{};
@@ -367,22 +370,22 @@ engine::Result HorizonRenderer::CreatePipelineLayout(VkDevice device) noexcept
 // ---------------------------------------------------------------------------
 
 engine::Result HorizonRenderer::CreatePipeline(
-    VkDevice       device,
-    const uint8_t  uuid[VK_UUID_SIZE],
-    bool           hasVertexInput,
-    VkPipeline&    outPipeline) noexcept
+    VkDevice                                  device,
+    const std::array<uint8_t, VK_UUID_SIZE>&  uuid,
+    bool                                      hasVertexInput,
+    VkPipeline&                               outPipeline) noexcept
 {
     // In VulkanSC shaders live in the pipeline cache; module must be VK_NULL_HANDLE.
-    VkPipelineShaderStageCreateInfo stages[2]{};
-    stages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    stages[0].module = VK_NULL_HANDLE;
-    stages[0].pName  = "main";
+    std::array<VkPipelineShaderStageCreateInfo, 2U> stages{};
+    stages[0U].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[0U].stage  = VK_SHADER_STAGE_VERTEX_BIT;
+    stages[0U].module = VK_NULL_HANDLE;
+    stages[0U].pName  = "main";
 
-    stages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-    stages[1].module = VK_NULL_HANDLE;
-    stages[1].pName  = "main";
+    stages[1U].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[1U].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+    stages[1U].module = VK_NULL_HANDLE;
+    stages[1U].pName  = "main";
 
     // Vertex input — used only by the LINE pipeline (binding 0, vec2, stride 8).
     const VkVertexInputBindingDescription binding{
@@ -433,20 +436,23 @@ engine::Result HorizonRenderer::CreatePipeline(
     cbCI.attachmentCount = 1U;
     cbCI.pAttachments    = &blendAtt;
 
-    static constexpr VkDynamicState kDynStates[2U]{
+    static constexpr std::array<VkDynamicState, 2U> kDynStates{
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR
     };
     VkPipelineDynamicStateCreateInfo dynCI{};
     dynCI.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynCI.dynamicStateCount = 2U;
-    dynCI.pDynamicStates    = kDynStates;
+    dynCI.pDynamicStates    = kDynStates.data();
 
     // VkPipelineOfflineCreateInfo — matches pre-compiled pipeline by UUID.
     VkPipelineOfflineCreateInfo offlineCI{};
     offlineCI.sType        = VK_STRUCTURE_TYPE_PIPELINE_OFFLINE_CREATE_INFO;
     offlineCI.pNext        = nullptr;
-    std::copy(uuid, uuid + VK_UUID_SIZE, offlineCI.pipelineIdentifier);
+    for (uint32_t i{0U}; i < VK_UUID_SIZE; ++i)
+    {
+        offlineCI.pipelineIdentifier[i] = uuid[i];
+    }
     offlineCI.matchControl  = VK_PIPELINE_MATCH_CONTROL_APPLICATION_UUID_EXACT_MATCH;
     offlineCI.poolEntrySize = kPoolEntrySize;
 
@@ -454,7 +460,7 @@ engine::Result HorizonRenderer::CreatePipeline(
     pipeCI.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipeCI.pNext               = &offlineCI;   // VulkanSC mandatory chain
     pipeCI.stageCount          = 2U;
-    pipeCI.pStages             = stages;
+    pipeCI.pStages             = stages.data();
     pipeCI.pVertexInputState   = &viCI;
     pipeCI.pInputAssemblyState = &iaCI;
     pipeCI.pTessellationState  = nullptr;

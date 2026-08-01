@@ -11,8 +11,7 @@
 ///   - The display mode with the largest visible area.
 ///   - The first display plane that supports the chosen display.
 ///
-/// @satisfies SWS_WSI_010  DisplayOutput creates surface via VK_KHR_display.
-/// @satisfies SWS_WSI_011  All fixed-size arrays are statically bounded.
+/// All enumeration buffers are fixed-size std::array — no dynamic allocation.
 
 #ifndef VKSC_ENGINE_WSI_DISPLAY_OUTPUT_HPP
 #define VKSC_ENGINE_WSI_DISPLAY_OUTPUT_HPP

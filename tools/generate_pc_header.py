@@ -10,9 +10,13 @@ Usage:
 
 The generated header defines:
     namespace sim {
-        static constexpr uint8_t  kPipelineCacheData[N] = { 0x.., ... };
-        static constexpr uint32_t kPipelineCacheDataSize = N;
+        inline constexpr uint8_t  kPipelineCacheData[N] = { 0x.., ... };
+        inline constexpr uint32_t kPipelineCacheDataSize = N;
     }
+
+`inline constexpr` (C++17) is required — the header is included by multiple
+translation units; `static constexpr` would give every TU its own copy of
+the array (ODR / binary-size issue).
 """
 
 import sys
@@ -61,10 +65,13 @@ def main() -> int:
         "\n"
         "namespace sim {\n"
         "\n"
-        f"static constexpr uint32_t kPipelineCacheDataSize{{static_cast<uint32_t>({size}U)}};\n"
+        f"inline constexpr uint32_t kPipelineCacheDataSize{{static_cast<uint32_t>({size}U)}};\n"
         "\n"
-        "// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)\n"
-        f"static constexpr uint8_t kPipelineCacheData[{size}U] = {{"
+        "// C array kept deliberately: the blob is passed to the C Vulkan SC API as a\n"
+        "// pointer + size; std::array would add no safety here (MISRA C++:2023\n"
+        "// Rule 11.3.1 is Advisory).\n"
+        "// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)\n"
+        f"inline constexpr uint8_t kPipelineCacheData[{size}U] = {{"
         f"{hex_body}\n"
         "};\n"
         "\n"

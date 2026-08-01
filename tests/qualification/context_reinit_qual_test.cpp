@@ -1,17 +1,15 @@
-/// @file SRS_INIT_002_test.cpp
-/// @brief Qualification test for SRS-INIT-002.
+/// @file context_reinit_qual_test.cpp
+/// @brief Qualification test for the VkscContext double-init guard.
 ///
 /// Verifies: "A second call to Init() on an already-initialised context shall
 /// return kAlreadyInitialised without modifying state."
-///
-/// @satisfies SRS-INIT-002
 
 #include <gtest/gtest.h>
 #include "engine/core/vksc_context.hpp"
 
 namespace engine {
 
-TEST(Qualification_SRS_INIT_002, SecondInitReturnsAlreadyInitialised)
+TEST(Qualification_ContextReinit, SecondInitReturnsAlreadyInitialised)
 {
     VkscContext ctx;
     VkscContextConfig cfg{};

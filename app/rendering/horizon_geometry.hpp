@@ -30,12 +30,13 @@
 ///   [ 88.. 93]  Aircraft symbol (wings + nose)      (3 lines, 6 verts)
 ///   Total: 94 vertices
 ///
-/// @satisfies SWS_HORIZON_010  Geometry computation is isolated from Vulkan.
-/// @satisfies SWS_HORIZON_011  All array sizes are compile-time constants.
+/// All array sizes are compile-time constants (std::array, MISRA C++:2023
+/// Rule 11.3.1).
 
 #ifndef VKSC_SIM_RENDERING_HORIZON_GEOMETRY_HPP
 #define VKSC_SIM_RENDERING_HORIZON_GEOMETRY_HPP
 
+#include <array>
 #include <cstdint>
 
 namespace sim {
@@ -60,7 +61,7 @@ static constexpr uint32_t kHorizonVertexCount{94U};
 void ComputeHorizonVertices(float rollDeg,
                             float pitchDeg,
                             float aspectRatio,
-                            Vertex2D (&verts)[kHorizonVertexCount]) noexcept;
+                            std::array<Vertex2D, kHorizonVertexCount>& verts) noexcept;
 
 } /* namespace rendering */
 } /* namespace sim */

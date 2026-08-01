@@ -13,10 +13,8 @@
 ///
 /// CMake automatically defines VKSC_ENABLE_LOGGING for Debug configurations.
 ///
-/// @satisfies   SWS_Log_001  Logging must not allocate dynamic memory.
-/// @satisfies   SWS_Log_002  Logging must not use variadic format functions.
-/// @satisfies   SWS_Log_005  Logging must be completely removable at compile time.
-/// @verifiedby  UT_Log_001
+/// Constraints: no dynamic memory, no variadic format functions (MISRA
+/// C++:2023 Rule 21.10.1), fully removable at compile time.
 
 #ifndef VKSC_ENGINE_CORE_LOG_HPP
 #define VKSC_ENGINE_CORE_LOG_HPP

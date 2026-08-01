@@ -2,15 +2,9 @@
 /// @brief Generic per-frame synchronisation: imageAvailable + renderComplete
 ///        semaphores and one in-flight fence.
 ///
-/// @satisfies SWS_RENDER_040  FrameSync owns all per-frame sync objects.
-/// @satisfies SWS_RENDER_041  WaitAndReset blocks until the GPU finishes the
-///                            previous frame before beginning a new one.
-/// @satisfies SRS-SYNC-001    Per-frame semaphores and fence prevent GPU command
-///                            buffer overlap across consecutive frames.
-/// @satisfies SRS-SYNC-002    Fence is created in the signalled state so the
-///                            first WaitAndReset returns immediately.
-/// @satisfies SRS-SYNC-003    Fence wait times out after 5 seconds; timeout
-///                            returns Result::kVkscTimeoutFailed.
+/// The fence is created in the signalled state so the first WaitAndReset()
+/// returns immediately.  Fence waits time out after 5 seconds; a timeout
+/// returns Result::kVkscTimeoutFailed (possible GPU hang).
 
 #ifndef VKSC_ENGINE_RENDERING_FRAME_SYNC_HPP
 #define VKSC_ENGINE_RENDERING_FRAME_SYNC_HPP

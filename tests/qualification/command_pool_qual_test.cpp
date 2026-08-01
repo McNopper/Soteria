@@ -1,19 +1,19 @@
-/// @file SRS_CMD_001_test.cpp
-/// @brief Qualification test for SRS-CMD-001.
+/// @file command_pool_qual_test.cpp
+/// @brief Qualification test for upfront command-buffer reservation.
 ///
 /// Verifies: "The engine shall reserve command buffer memory upfront at
 /// CommandPool initialisation time; no allocation shall be performed after
 /// Init returns."
-///
-/// @satisfies SRS-CMD-001
 
 #include <gtest/gtest.h>
 #include "engine/core/vksc_context.hpp"
 #include "engine/rendering/command_pool.hpp"
 
+#include <array>
+
 namespace engine {
 
-TEST(Qualification_SRS_CMD_001, CommandPoolReservesBuffersUpfront)
+TEST(Qualification_CommandPool, CommandPoolReservesBuffersUpfront)
 {
     VkscContext ctx;
     VkscContextConfig cfg{};
@@ -34,8 +34,8 @@ TEST(Qualification_SRS_CMD_001, CommandPoolReservesBuffersUpfront)
     EXPECT_NE(pool.Handle(), VK_NULL_HANDLE);
 
     // Allocate all reserved command buffers — this must succeed.
-    VkCommandBuffer buffers[4]{};
-    EXPECT_EQ(pool.AllocateBuffers(ctx.Device(), 4U, buffers), Result::kOk);
+    std::array<VkCommandBuffer, 4U> buffers{};
+    EXPECT_EQ(pool.AllocateBuffers(ctx.Device(), 4U, buffers.data()), Result::kOk);
     for (auto buf : buffers) {
         EXPECT_NE(buf, VK_NULL_HANDLE);
     }

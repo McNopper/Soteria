@@ -7,6 +7,7 @@
 #include "display_output.hpp"
 #include "../core/log.hpp"
 
+#include <array>
 #include <cstdint>
 
 namespace engine {
@@ -39,8 +40,8 @@ Result DisplayOutput::Init(VkInstance instance, VkPhysicalDevice pd) noexcept
     }
     if (displayCount > kMaxDisplays) { displayCount = kMaxDisplays; }
 
-    VkDisplayPropertiesKHR displays[kMaxDisplays]{};
-    r = vkGetPhysicalDeviceDisplayPropertiesKHR(pd, &displayCount, displays);
+    std::array<VkDisplayPropertiesKHR, kMaxDisplays> displays{};
+    r = vkGetPhysicalDeviceDisplayPropertiesKHR(pd, &displayCount, displays.data());
     if (r != VK_SUCCESS)
     {
         log::Error("DisplayOutput: vkGetPhysicalDeviceDisplayPropertiesKHR failed.");
@@ -61,8 +62,8 @@ Result DisplayOutput::Init(VkInstance instance, VkPhysicalDevice pd) noexcept
     }
     if (modeCount > kMaxModes) { modeCount = kMaxModes; }
 
-    VkDisplayModePropertiesKHR modes[kMaxModes]{};
-    r = vkGetDisplayModePropertiesKHR(pd, chosenDisplay, &modeCount, modes);
+    std::array<VkDisplayModePropertiesKHR, kMaxModes> modes{};
+    r = vkGetDisplayModePropertiesKHR(pd, chosenDisplay, &modeCount, modes.data());
     if (r != VK_SUCCESS)
     {
         log::Error("DisplayOutput: vkGetDisplayModePropertiesKHR failed.");
@@ -94,8 +95,8 @@ Result DisplayOutput::Init(VkInstance instance, VkPhysicalDevice pd) noexcept
     }
     if (planeCount > kMaxPlanes) { planeCount = kMaxPlanes; }
 
-    VkDisplayPlanePropertiesKHR planes[kMaxPlanes]{};
-    r = vkGetPhysicalDeviceDisplayPlanePropertiesKHR(pd, &planeCount, planes);
+    std::array<VkDisplayPlanePropertiesKHR, kMaxPlanes> planes{};
+    r = vkGetPhysicalDeviceDisplayPlanePropertiesKHR(pd, &planeCount, planes.data());
     if (r != VK_SUCCESS)
     {
         log::Error("DisplayOutput: vkGetPhysicalDeviceDisplayPlanePropertiesKHR failed.");
@@ -110,9 +111,9 @@ Result DisplayOutput::Init(VkInstance instance, VkPhysicalDevice pd) noexcept
         r = vkGetDisplayPlaneSupportedDisplaysKHR(pd, p, &supportedCount, nullptr);
         if ((r != VK_SUCCESS) || (supportedCount == 0U)) { continue; }
 
-        VkDisplayKHR supportedDisplays[kMaxDisplays]{};
+        std::array<VkDisplayKHR, kMaxDisplays> supportedDisplays{};
         if (supportedCount > kMaxDisplays) { supportedCount = kMaxDisplays; }
-        r = vkGetDisplayPlaneSupportedDisplaysKHR(pd, p, &supportedCount, supportedDisplays);
+        r = vkGetDisplayPlaneSupportedDisplaysKHR(pd, p, &supportedCount, supportedDisplays.data());
         if (r != VK_SUCCESS) { continue; }
 
         for (uint32_t sd{0U}; sd < supportedCount; ++sd)

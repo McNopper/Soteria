@@ -8,13 +8,48 @@ practical to automotive **ASIL-D** (ISO 26262) and **MISRA C++:2023** practices.
 
 Includes an **avionics artificial horizon** demo.
 
-## Safety constraints
+## Layout
 
-- MISRA C++:2023 — high warning level treated as errors (`/W4 /WX`); `.clang-tidy` holds a MISRA-aligned static-analysis profile for `engine/`, run separately via the exported `compile_commands.json`
-- No exceptions, no RTTI, no dynamic allocation after init
-- All logging eliminated at compile time in Release builds
-- Pre-compiled pipeline cache embedded as a `constexpr` array
-- Deterministic ordered shutdown
+| Location | Description |
+|----------|-------------|
+| [engine](engine) | Safety-critical core: Vulkan SC context, swapchain, pipeline cache, vertex buffer, frame sync, command pool, WSI and data interfaces. Written to MISRA C++:2023. |
+| [app](app) | Simulation/desktop demo: artificial-horizon renderer, demo attitude source, console telemetry. Not part of the certifiable layer. |
+| [tests](tests) | GoogleTest suites (see below). |
+| [tools](tools) | `generate_pc_header.py` — embeds a pipeline-cache binary as a C++ header. |
+
+## Safety constraints (engine/)
+
+- **MISRA C++:2023** — rule references in code and `.clang-tidy` follow the
+  October 2023 numbering (not the retired MISRA C++:2008 `0-x-y` style).
+- High warning level treated as errors (`/W4 /WX` plus `-Wshadow`,
+  `-Wconversion`, `-Wsign-conversion`, `-Wnull-dereference`, `-Wswitch-enum`).
+- No exceptions, no RTTI, no dynamic allocation after init.
+- All logging eliminated at compile time in Release builds.
+- Pre-compiled pipeline cache embedded as a `constexpr` array.
+- Deterministic ordered shutdown.
+- Deviations are annotated at the point of use with `MISRA_DEVIATION()`
+  ([engine/core/safety_macros.hpp](engine/core/safety_macros.hpp)) plus a
+  matching `// NOLINT(check-name)` comment. Currently one deviation exists:
+  Rule 8.2.6 (void* cast) for Vulkan SC mapped memory in
+  [engine/rendering/vertex_buffer.cpp](engine/rendering/vertex_buffer.cpp).
+  A second deviation covers the debug-only use of C stdio logging
+  (Rule 30.0.1, compiled out of production builds) in
+  [engine/core/log.cpp](engine/core/log.cpp).
+
+## Static analysis
+
+`.clang-tidy` holds a MISRA C++:2023-aligned profile for `engine/` (rule
+references verified against the published document). CMake exports
+`compile_commands.json`, so no extra configuration is needed:
+
+```powershell
+$clangTidy = "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\Llvm\x64\bin\clang-tidy.exe"
+Get-ChildItem engine -Recurse -Filter *.cpp | ForEach-Object {
+    & $clangTidy -p build $_.FullName
+}
+```
+
+All findings are treated as errors (`WarningsAsErrors: '*'`).
 
 ## Tests
 

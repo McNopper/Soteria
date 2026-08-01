@@ -1,55 +1,53 @@
-/// @file SRS_PIPE_001_test.cpp
-/// @brief Qualification tests for SRS-PIPE-001 and SRS-PIPE-002.
+/// @file pipeline_cache_qual_test.cpp
+/// @brief Qualification tests for the offline pipeline cache loading path.
 ///
-/// SRS-PIPE-001: "The engine shall load a compile-time binary pipeline cache
-/// and create a VkPipelineCache handle from it."
-///
-/// SRS-PIPE-002: "Init shall validate that the supplied cache data pointer is
-/// non-null and the size is greater than zero; invalid arguments return
-/// kInvalidArgument."
-///
-/// @satisfies SRS-PIPE-001
-/// @satisfies SRS-PIPE-002
+/// Verifies: "The engine shall load a compile-time binary pipeline cache
+/// and create a VkPipelineCache handle from it" and "Init shall validate that
+/// the supplied cache data pointer is non-null and the size is greater than
+/// zero; invalid arguments return kInvalidArgument."
 
 #include <gtest/gtest.h>
 #include "engine/core/vksc_context.hpp"
 #include "engine/rendering/pipeline_cache.hpp"
 #include "app/rendering/pipeline_cache_data.hpp"
 
+#include <array>
+
 namespace engine {
 
 // ---------------------------------------------------------------------------
-// SRS-PIPE-002: argument validation — fully offline
+// Argument validation — fully offline
 // ---------------------------------------------------------------------------
 
-TEST(Qualification_SRS_PIPE_002, NullDeviceReturnsInvalidArgument)
+TEST(Qualification_PipelineCache, NullDeviceReturnsInvalidArgument)
 {
     rendering::PipelineCacheSc cache;
-    uint8_t data[8]{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
-    EXPECT_EQ(cache.Init(VK_NULL_HANDLE, data, sizeof(data)),
+    std::array<uint8_t, 8U> data{0x01U, 0x02U, 0x03U, 0x04U,
+                                 0x05U, 0x06U, 0x07U, 0x08U};
+    EXPECT_EQ(cache.Init(VK_NULL_HANDLE, data.data(), static_cast<uint32_t>(data.size())),
               Result::kInvalidArgument);
 }
 
-TEST(Qualification_SRS_PIPE_002, NullDataReturnsInvalidArgument)
+TEST(Qualification_PipelineCache, NullDataReturnsInvalidArgument)
 {
     rendering::PipelineCacheSc cache;
     EXPECT_EQ(cache.Init(VK_NULL_HANDLE, nullptr, 8U),
               Result::kInvalidArgument);
 }
 
-TEST(Qualification_SRS_PIPE_002, ZeroSizeReturnsInvalidArgument)
+TEST(Qualification_PipelineCache, ZeroSizeReturnsInvalidArgument)
 {
     rendering::PipelineCacheSc cache;
-    uint8_t data[4]{};
-    EXPECT_EQ(cache.Init(VK_NULL_HANDLE, data, 0U),
+    std::array<uint8_t, 4U> data{};
+    EXPECT_EQ(cache.Init(VK_NULL_HANDLE, data.data(), 0U),
               Result::kInvalidArgument);
 }
 
 // ---------------------------------------------------------------------------
-// SRS-PIPE-001: success path — requires VulkanSC device
+// Success path — requires VulkanSC device
 // ---------------------------------------------------------------------------
 
-TEST(Qualification_SRS_PIPE_001, InitCreatesPipelineCacheHandle)
+TEST(Qualification_PipelineCache, InitCreatesPipelineCacheHandle)
 {
     // Vulkan SC requires every pipeline cache to be declared in the device
     // reservation at vkCreateDevice time; vkCreatePipelineCache then only

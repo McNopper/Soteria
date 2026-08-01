@@ -1,23 +1,17 @@
-/// @file SRS_INIT_001_test.cpp
-/// @brief Qualification tests for SRS-INIT-001 and SRS-INIT-005.
+/// @file context_init_qual_test.cpp
+/// @brief Qualification tests for VkscContext initialisation and shutdown.
 ///
-/// QT-001: Verifies "The engine shall initialise a Vulkan SC instance and logical
-///         device from a caller-supplied configuration." (SRS-INIT-001)
-///
-/// QT-003: Verifies "The software shall perform deterministic ordered Shutdown;
-///         all handles must be null and IsInitialised() false after Shutdown."
-///         (SRS-INIT-005)
-///
-/// @satisfies SRS-INIT-001
-/// @satisfies SRS-INIT-005
+/// Verifies: "The engine shall initialise a Vulkan SC instance and logical
+/// device from a caller-supplied configuration" and "Shutdown shall reset all
+/// handles and IsInitialised() to false (deterministic ordered shutdown)."
 
 #include <gtest/gtest.h>
 #include "engine/core/vksc_context.hpp"
 
 namespace engine {
 
-/// @test QT-001 — Init creates Vulkan SC instance and device.
-TEST(Qualification_SRS_INIT_001, InitCreatesInstanceAndDevice)
+/// Init creates Vulkan SC instance, physical device, logical device, and queue.
+TEST(Qualification_ContextInit, InitCreatesInstanceAndDevice)
 {
     VkscContext ctx;
     VkscContextConfig cfg{};
@@ -36,8 +30,8 @@ TEST(Qualification_SRS_INIT_001, InitCreatesInstanceAndDevice)
     ctx.Shutdown();
 }
 
-/// @test QT-003 — Shutdown resets all handles and IsInitialised to false (SRS-INIT-005).
-TEST(Qualification_SRS_INIT_005, ShutdownResetsAllHandles)
+/// Shutdown resets all handles and IsInitialised to false.
+TEST(Qualification_ContextInit, ShutdownResetsAllHandles)
 {
     VkscContext ctx;
     VkscContextConfig cfg{};

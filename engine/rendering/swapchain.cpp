@@ -4,6 +4,7 @@
 #include "swapchain.hpp"
 #include "../core/log.hpp"
 
+#include <array>
 #include <cstdint>
 
 namespace engine {
@@ -45,8 +46,8 @@ Result SwapchainSc::Init(const Config& cfg) noexcept
     }
     if (formatCount > kMaxFormats) { formatCount = kMaxFormats; }
 
-    VkSurfaceFormatKHR formats[kMaxFormats]{};
-    r = vkGetPhysicalDeviceSurfaceFormatsKHR(cfg.physDevice, cfg.surface, &formatCount, formats);
+    std::array<VkSurfaceFormatKHR, kMaxFormats> formats{};
+    r = vkGetPhysicalDeviceSurfaceFormatsKHR(cfg.physDevice, cfg.surface, &formatCount, formats.data());
     if (r != VK_SUCCESS)
     {
         log::Error("SwapchainSc: vkGetPhysicalDeviceSurfaceFormatsKHR failed.");
@@ -132,7 +133,7 @@ Result SwapchainSc::Init(const Config& cfg) noexcept
     }
     if (m_imageCount > kMaxImages) { m_imageCount = kMaxImages; }
 
-    r = vkGetSwapchainImagesKHR(cfg.device, m_swapchain, &m_imageCount, m_images);
+    r = vkGetSwapchainImagesKHR(cfg.device, m_swapchain, &m_imageCount, m_images.data());
     if (r != VK_SUCCESS)
     {
         log::Error("SwapchainSc: vkGetSwapchainImagesKHR failed.");

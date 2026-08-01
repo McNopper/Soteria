@@ -3,13 +3,8 @@
 ///
 /// In VulkanSC, VkCommandPoolMemoryReservationCreateInfo must be chained
 /// into VkCommandPoolCreateInfo to declare the reserved command memory size.
-///
-/// @satisfies SWS_RENDER_050  CommandPool owns the VkCommandPool handle.
-/// @satisfies SWS_RENDER_051  AllocateBuffers returns kCommandPoolFailed on
-///                            any allocation error (never silently truncates).
-/// @satisfies SRS-CMD-001     Command pool uses upfront reservation via
-///                            VkCommandPoolMemoryReservationCreateInfo.
-/// @satisfies SRS-CMD-002     Only primary command buffers are allocated.
+/// Only primary command buffers are allocated; AllocateBuffers returns an
+/// error on any allocation failure (never silently truncates).
 
 #ifndef VKSC_ENGINE_RENDERING_COMMAND_POOL_HPP
 #define VKSC_ENGINE_RENDERING_COMMAND_POOL_HPP

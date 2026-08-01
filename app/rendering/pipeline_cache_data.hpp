@@ -14,7 +14,10 @@ namespace sim {
 
 inline constexpr uint32_t kPipelineCacheDataSize{static_cast<uint32_t>(14880U)};
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+// C array kept deliberately: the blob is passed to the C Vulkan SC API as a
+// pointer + size; std::array would add no safety here (MISRA C++:2023
+// Rule 11.3.1 is Advisory).
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
 inline constexpr uint8_t kPipelineCacheData[14880U] = {
     0x38U,0x00U,0x00U,0x00U,0x11U,0x56U,0x9FU,0x3BU,0x00U,0x00U,0x01U,0x00U,
     0x7AU,0xDAU,0x9CU,0xD1U,0x27U,0xA8U,0x32U,0x5AU,0x71U,0x38U,0x4CU,0xA3U,

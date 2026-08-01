@@ -5,10 +5,7 @@
 /// timing and display state.  Safety monitors, health watchdogs, recording
 /// subsystems, and test harnesses implement this interface.
 ///
-/// @satisfies SWS_DATA_003  IFrameReport decouples telemetry sink from renderer.
-/// @satisfies SWS_DATA_004  OnFrameComplete is called exactly once per presented frame.
-/// @satisfies SRS-TEL-001   Telemetry sink interface exposes per-frame timing metrics.
-/// @satisfies SRS-TEL-002   OnFrameComplete must be non-blocking and non-allocating.
+/// Implementations must be non-blocking and must not allocate memory.
 
 #ifndef VKSC_ENGINE_DATA_I_FRAME_REPORT_HPP
 #define VKSC_ENGINE_DATA_I_FRAME_REPORT_HPP

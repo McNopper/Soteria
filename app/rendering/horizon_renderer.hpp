@@ -35,10 +35,8 @@
 ///   offset 28  float a           line colour A
 /// @endcode
 ///
-/// @satisfies SWS_HORIZON_020  HorizonRenderer owns all VulkanSC handles.
-/// @satisfies SWS_HORIZON_021  Init cleans up all handles on any failure path.
-/// @satisfies SWS_HORIZON_022  RecordFrame returns VK_NULL_HANDLE on any error.
-/// @satisfies SWS_HORIZON_023  HorizonRenderer has no knowledge of presentation.
+/// Init cleans up all handles on any failure path; RecordFrame returns
+/// VK_NULL_HANDLE on any error.
 
 #ifndef VKSC_SIM_RENDERING_HORIZON_RENDERER_HPP
 #define VKSC_SIM_RENDERING_HORIZON_RENDERER_HPP
@@ -51,6 +49,7 @@
 #include "horizon_geometry.hpp"
 
 #include <vulkan/vulkan_sc.h>
+#include <array>
 #include <cstdint>
 
 namespace sim {
@@ -141,12 +140,12 @@ public:
 
 private:
     /// Pipeline UUIDs — must match PipelineUUID in the pipeline JSON files.
-    static constexpr uint8_t kBgUuid[VK_UUID_SIZE] =
-        {161U, 162U, 163U, 164U, 165U, 166U, 167U, 168U,
-           0U,   0U,   0U,   0U,   0U,   0U,   0U,   0U};
-    static constexpr uint8_t kLineUuid[VK_UUID_SIZE] =
-        {177U, 178U, 179U, 180U, 181U, 182U, 183U, 184U,
-           0U,   0U,   0U,   0U,   0U,   0U,   0U,   0U};
+    static constexpr std::array<uint8_t, VK_UUID_SIZE> kBgUuid{
+        161U, 162U, 163U, 164U, 165U, 166U, 167U, 168U,
+          0U,   0U,   0U,   0U,   0U,   0U,   0U,   0U};
+    static constexpr std::array<uint8_t, VK_UUID_SIZE> kLineUuid{
+        177U, 178U, 179U, 180U, 181U, 182U, 183U, 184U,
+          0U,   0U,   0U,   0U,   0U,   0U,   0U,   0U};
 
     /// Command buffer memory reservation (128 KiB; generous for 2 draw calls).
     static constexpr VkDeviceSize kCmdReservedBytes{131072U};
@@ -168,8 +167,7 @@ private:
     VkCommandBuffer  m_cmdBuffer{VK_NULL_HANDLE};
 
     /// Must be >= SwapchainSc::kMaxImages (currently 3). Static assertion in .cpp.
-    // kMaxFramebuffers is now public — see above.
-    VkFramebuffer    m_framebuffers[kMaxFramebuffers]{};
+    std::array<VkFramebuffer, kMaxFramebuffers> m_framebuffers{};
     uint32_t         m_framebufferCount{0U};
 
     /// Stored at Init for use in RecordFrame.
@@ -183,11 +181,13 @@ private:
 
     [[nodiscard]] engine::Result CreatePipelineLayout(VkDevice device) noexcept;
 
+    /// @param uuid            Pipeline UUID (must match the offline-compiled pipeline).
     /// @param hasVertexInput  true for the LINE pipeline (binding 0, vec2 stride 8).
-    [[nodiscard]] engine::Result CreatePipeline(VkDevice       device,
-                                                 const uint8_t  uuid[VK_UUID_SIZE],
-                                                 bool           hasVertexInput,
-                                                 VkPipeline&    outPipeline) noexcept;
+    [[nodiscard]] engine::Result CreatePipeline(
+        VkDevice                                  device,
+        const std::array<uint8_t, VK_UUID_SIZE>&  uuid,
+        bool                                      hasVertexInput,
+        VkPipeline&                               outPipeline) noexcept;
 
     [[nodiscard]] engine::Result CreateFramebuffers(VkDevice           device,
                                                      const VkImageView* imageViews,

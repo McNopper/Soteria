@@ -7,11 +7,8 @@
 /// pre-compiled pipeline by matching the UUID stored in
 /// VkPipelineOfflineCreateInfo.
 ///
-/// @satisfies SWS_RENDER_020  PipelineCacheSc owns the VkPipelineCache handle.
-/// @satisfies SWS_RENDER_021  Init validates that data is non-null and non-empty.
-/// @satisfies SRS-PIPE-001    Pipeline cache is loaded from compile-time binary
-///                            data; no filesystem I/O occurs at runtime.
-/// @satisfies SRS-PIPE-002    Init rejects null data pointer or zero data size.
+/// The cache is loaded from compile-time binary data; no filesystem I/O
+/// occurs at runtime.  Init rejects a null data pointer or zero data size.
 
 #ifndef VKSC_ENGINE_RENDERING_PIPELINE_CACHE_HPP
 #define VKSC_ENGINE_RENDERING_PIPELINE_CACHE_HPP

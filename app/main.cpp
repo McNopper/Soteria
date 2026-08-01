@@ -52,8 +52,9 @@
 ///   attachmentDescriptions   = 1
 ///
 /// PipelinePoolSizes (declared in reservation):
-///   Pipelines compiled without poolEntrySize → pipelinePoolSizeCount = 0.
-///   (poolEntrySize = 0 in VkPipelineOfflineCreateInfo at runtime)
+///   One entry: poolEntrySize = HorizonRenderer::kPoolEntrySize (8 KiB),
+///   poolEntryCount = kPipelineCount (2: BG + LINE).  The same poolEntrySize
+///   is passed in VkPipelineOfflineCreateInfo at pipeline creation time.
 
 #include "../engine/core/vksc_context.hpp"
 #include "../engine/core/log.hpp"
@@ -71,11 +72,11 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>   // GetTickCount64
+#include <windows.h>   // QueryPerformanceCounter, QueryPerformanceFrequency
 
+#include <array>
 #include <cstdlib>
 #include <cstdint>
-#include <cstdio>
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -194,10 +195,10 @@ int main()
     pcCI.initialDataSize = sim::kPipelineCacheDataSize;
     pcCI.pInitialData    = sim::kPipelineCacheData;
 
-    // Pipelines were compiled without an explicit poolEntrySize (= 0).
-    // VulkanSC spec requires pipelinePoolSizeCount = 0 in that case.
-    // Pool size entry for all horizon pipelines.  poolEntrySize must match
-    // HorizonRenderer::kPoolEntrySize (both must be updated together).
+    // Pool size entry covering both horizon pipelines.  poolEntrySize must
+    // match HorizonRenderer::kPoolEntrySize and the poolEntrySize passed in
+    // VkPipelineOfflineCreateInfo at pipeline creation (all three places
+    // reference the same constant).
     VkPipelinePoolSize poolSizes{};
     poolSizes.sType          = VK_STRUCTURE_TYPE_PIPELINE_POOL_SIZE;
     poolSizes.pNext          = nullptr;
@@ -271,7 +272,7 @@ int main()
     //    the image views for the duration of its lifetime.
     // -----------------------------------------------------------------------
     const uint32_t imageCount = swapchain.ImageCount();
-    VkImageView imageViews[engine::rendering::SwapchainSc::kMaxImages]{};
+    std::array<VkImageView, engine::rendering::SwapchainSc::kMaxImages> imageViews{};
     for (uint32_t i = 0U; i < imageCount; ++i)
     {
         imageViews[i] = swapchain.ImageView(i);
@@ -284,7 +285,7 @@ int main()
         rendCfg.queueFamily  = ctx.GraphicsQueueFamily();
         rendCfg.colorFormat  = swapchain.Format();
         rendCfg.extent       = swapchain.Extent();
-        rendCfg.imageViews   = imageViews;
+        rendCfg.imageViews   = imageViews.data();
         rendCfg.imageCount   = imageCount;
 
         const engine::Result r = renderer.Init(rendCfg);
@@ -326,8 +327,10 @@ int main()
     engine::log::Info("main: entering frame loop.");
 
     // Query performance frequency once — it does not change at runtime.
+    // The (void) casts explicitly discard the Win32 BOOL returns (Rule 0.1.2);
+    // on any supported Windows version these calls cannot fail.
     LARGE_INTEGER perfFreq{};
-    QueryPerformanceFrequency(&perfFreq);
+    (void)QueryPerformanceFrequency(&perfFreq);
 
     bool loopRunning = true;
     uint64_t frameNumber = 0U;
@@ -377,7 +380,7 @@ int main()
 
         // --- 8.4 Ask the renderer to record the frame. ---
         LARGE_INTEGER recordStart{};
-        QueryPerformanceCounter(&recordStart);
+        (void)QueryPerformanceCounter(&recordStart);
 
         const VkCommandBuffer cmdBuf = renderer.RecordFrame(imageIndex, attitude);
         if (cmdBuf == VK_NULL_HANDLE)
@@ -388,7 +391,7 @@ int main()
         }
 
         LARGE_INTEGER recordEnd{};
-        QueryPerformanceCounter(&recordEnd);
+        (void)QueryPerformanceCounter(&recordEnd);
 
         // --- 8.5 Submit command buffer. ---
         //

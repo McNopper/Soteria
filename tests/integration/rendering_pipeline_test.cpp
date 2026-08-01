@@ -4,11 +4,6 @@
 /// These tests verify that rendering components can be initialised using the VkDevice
 /// obtained from VkscContext.  They require a VulkanSC-capable host and are
 /// automatically skipped when none is available.
-///
-/// @satisfies SRS-CMD-001   CommandPool reserves command buffer memory upfront.
-/// @satisfies SRS-SYNC-001  FrameSync creates semaphore and fence handles.
-/// @satisfies SRS-PIPE-001  PipelineCacheSc loads compile-time binary cache.
-/// @satisfies SRS-INIT-005  Ordered Shutdown releases all component resources.
 
 #include <gtest/gtest.h>
 #include "engine/core/vksc_context.hpp"

@@ -12,11 +12,6 @@
 ///
 /// Every Init() error path cleans up all previously-created handles.
 /// Shutdown() is safe to call on a partially-initialised context.
-///
-/// @satisfies   SWS_Context_001
-/// @satisfies   SWS_Context_002
-/// @verifiedby  UT_Context_001
-/// @verifiedby  UT_Context_002
 
 #include "vksc_context.hpp"
 
@@ -24,6 +19,7 @@
 #include "log.hpp"
 #include "safety_macros.hpp"
 
+#include <array>
 #include <cstdint>
 
 namespace engine {
@@ -73,7 +69,7 @@ Result VkscContext::Init(const VkscContextConfig& config) noexcept
     instanceCI.ppEnabledLayerNames     = nullptr;
     instanceCI.enabledExtensionCount   = config.instanceExtensionCount;
     instanceCI.ppEnabledExtensionNames =
-        (config.instanceExtensionCount > 0U) ? config.instanceExtensions : nullptr;
+        (config.instanceExtensionCount > 0U) ? config.instanceExtensions.data() : nullptr;
 
     log::Info("VkscContext: creating Vulkan SC instance...");
     const VkResult instanceResult = vkCreateInstance(&instanceCI, nullptr, &m_instance);
@@ -87,7 +83,7 @@ Result VkscContext::Init(const VkscContextConfig& config) noexcept
     // ---- 3. Select physical device + queue family ---------------------------
     const Result selectResult =
         SelectPhysicalDevice(m_physicalDevice, m_graphicsQueueFamily,
-                             config.preferredDriverId);
+                             config.preferredDriverId, config.maxPhysicalDevices);
     if (!IsOk(selectResult))
     {
         vkDestroyInstance(m_instance, nullptr);
@@ -177,7 +173,7 @@ Result VkscContext::Init(const VkscContextConfig& config) noexcept
     deviceCI.ppEnabledLayerNames     = nullptr;
     deviceCI.enabledExtensionCount   = config.deviceExtensionCount;
     deviceCI.ppEnabledExtensionNames =
-        (config.deviceExtensionCount > 0U) ? config.deviceExtensions : nullptr;
+        (config.deviceExtensionCount > 0U) ? config.deviceExtensions.data() : nullptr;
     deviceCI.pEnabledFeatures        = nullptr;
 
     log::Info("VkscContext: creating logical device...");
@@ -223,7 +219,12 @@ void VkscContext::Shutdown() noexcept
 
     if (m_device != VK_NULL_HANDLE)
     {
-        vkDeviceWaitIdle(m_device);
+        // Best-effort wait: a failure must not prevent device destruction,
+        // but it is checked and logged (MISRA C++:2023 Rule 0.1.2).
+        if (vkDeviceWaitIdle(m_device) != VK_SUCCESS)
+        {
+            log::Warn("VkscContext: vkDeviceWaitIdle failed during shutdown.");
+        }
         vkDestroyDevice(m_device, nullptr);
         m_device       = VK_NULL_HANDLE;
         m_graphicsQueue = VK_NULL_HANDLE;
@@ -248,8 +249,17 @@ void VkscContext::Shutdown() noexcept
 
 Result VkscContext::SelectPhysicalDevice(VkPhysicalDevice& outDevice,
                                          uint32_t&         outQueueFamily,
-                                         VkDriverId        preferredDriverId) const noexcept
+                                         VkDriverId        preferredDriverId,
+                                         uint32_t          maxDevices) const noexcept
 {
+    // Clamp the caller's enumeration cap into the valid range 1..kMaxPhysicalDevices.
+    uint32_t deviceCap = maxDevices;
+    if (deviceCap == 0U) { deviceCap = 1U; }
+    if (deviceCap > VkscContextConfig::kMaxPhysicalDevices)
+    {
+        deviceCap = VkscContextConfig::kMaxPhysicalDevices;
+    }
+
     uint32_t deviceCount{0U};
     const VkResult countResult =
         vkEnumeratePhysicalDevices(m_instance, &deviceCount, nullptr);
@@ -259,14 +269,14 @@ Result VkscContext::SelectPhysicalDevice(VkPhysicalDevice& outDevice,
         return Result::kVkscEnumerateFailed;
     }
 
-    if (deviceCount > kMaxPhysicalDevices)
+    if (deviceCount > deviceCap)
     {
-        deviceCount = kMaxPhysicalDevices;
+        deviceCount = deviceCap;
     }
 
-    VkPhysicalDevice devices[kMaxPhysicalDevices]{};
+    std::array<VkPhysicalDevice, VkscContextConfig::kMaxPhysicalDevices> devices{};
     const VkResult enumResult =
-        vkEnumeratePhysicalDevices(m_instance, &deviceCount, devices);
+        vkEnumeratePhysicalDevices(m_instance, &deviceCount, devices.data());
     if (enumResult != VK_SUCCESS)
     {
         log::Error("VkscContext: vkEnumeratePhysicalDevices failed.");
@@ -338,8 +348,8 @@ Result VkscContext::SelectPhysicalDevice(VkPhysicalDevice& outDevice,
             if (familyCount == 0U) { continue; }
             if (familyCount > kMaxQueueFamilies) { familyCount = kMaxQueueFamilies; }
 
-            VkQueueFamilyProperties families[kMaxQueueFamilies]{};
-            vkGetPhysicalDeviceQueueFamilyProperties(devices[d], &familyCount, families);
+            std::array<VkQueueFamilyProperties, kMaxQueueFamilies> families{};
+            vkGetPhysicalDeviceQueueFamilyProperties(devices[d], &familyCount, families.data());
 
             for (uint32_t f{0U}; f < familyCount; ++f)
             {

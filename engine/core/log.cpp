@@ -4,11 +4,6 @@
 /// Uses fputs() only — no format strings, no heap allocation.
 /// When VKSC_ENABLE_LOGGING is not defined all *Impl bodies are empty so
 /// the linker strips them and no logging text reaches the production binary.
-///
-/// @satisfies   SWS_Log_001
-/// @satisfies   SWS_Log_002
-/// @satisfies   SWS_Log_005
-/// @verifiedby  UT_Log_001
 
 #include "log.hpp"
 
@@ -25,15 +20,19 @@ namespace {
 
 /// @brief Write prefix + message + newline to @p stream.
 ///
-/// fputs() return values are discarded: a logging failure is non-recoverable
-/// and must not abort the engine.  The MISRA deviation is documented below.
+/// The (void) casts are the MISRA-compliant way to discard the fputs()
+/// return values (Rule 0.1.2, permitted by the Rule 8.2.2 void-cast
+/// exception): a logging failure is non-recoverable and must not abort
+/// the engine.  Use of the C stdio facility itself is deviated below.
 void Write(const char* const prefix,
            const char* const msg,
            FILE* const       stream) noexcept
 {
-    MISRA_DEVIATION("Rule 0-1-9",
-                    "Return values of fputs are discarded. Logging failure is "
-                    "non-recoverable; aborting on failed write would be worse.");
+    MISRA_DEVIATION("Rule 30.0.1",
+                    "C library I/O (fputs/stdout/stderr) is used for debug "
+                    "logging. This code is compiled out of production builds "
+                    "(VKSC_ENABLE_LOGGING is never defined there); no file "
+                    "streams are opened and no format strings are used.");
 
     (void)fputs(prefix, stream);
     (void)fputs(msg,    stream);

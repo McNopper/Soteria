@@ -3,7 +3,9 @@
 
 #include "vertex_buffer.hpp"
 #include "../core/log.hpp"
+#include "../core/safety_macros.hpp"
 
+#include <algorithm>
 #include <cstdint>
 
 namespace engine {
@@ -126,6 +128,35 @@ Result VertexBuffer::Init(VkDevice device, VkPhysicalDevice physDevice,
     m_sizeBytes   = sizeBytes;
     m_initialised = true;
     log::Info("VertexBuffer: created.");
+    return Result::kOk;
+}
+
+// ---- Write ------------------------------------------------------------------
+
+Result VertexBuffer::Write(const void* const data, const uint32_t bytes) const noexcept
+{
+    if (!m_initialised)
+    {
+        log::Error("VertexBuffer::Write called before Init.");
+        return Result::kError;
+    }
+    if ((data == nullptr) || (bytes == 0U) || (bytes > m_sizeBytes))
+    {
+        log::Error("VertexBuffer::Write: null data, zero bytes, or size overflow.");
+        return Result::kInvalidArgument;
+    }
+
+    // vkMapMemory returns void*; casting it to a byte pointer to write into the
+    // mapped region is unavoidable with the Vulkan SC API.  This is the single
+    // deviation point — callers use Write() and need no cast of their own.
+    MISRA_DEVIATION("Rule 8.2.6",
+                    "Cast from pointer-to-void to pointer-to-uint8_t is required "
+                    "to write into Vulkan SC mapped memory; vkMapMemory only "
+                    "yields void*. Bounds are checked above.");
+    const auto* const src = static_cast<const uint8_t*>(data);
+    auto* const       dst = static_cast<uint8_t*>(m_mapped);
+
+    std::copy(src, src + bytes, dst);
     return Result::kOk;
 }
 

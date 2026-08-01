@@ -15,11 +15,8 @@
 ///   valid      : false when the data source reports a sensor failure or
 ///                data age has exceeded the declared maximum latency.
 ///
-/// @satisfies SWS_DATA_001  IAttitudeSource decouples data source from renderer.
-/// @satisfies SWS_DATA_002  AttitudeData.valid must be checked before rendering.
-/// @satisfies SRS-ATT-001   Attitude data delivered through IAttitudeSource interface.
-/// @satisfies SRS-ATT-002   AttitudeData.valid signals sensor failure to renderer.
-/// @satisfies SRS-ATT-003   AttitudeData uses aviation sign conventions.
+/// AttitudeData.valid must be checked before rendering; when false the
+/// renderer must display a failure indication.
 
 #ifndef VKSC_ENGINE_DATA_I_ATTITUDE_SOURCE_HPP
 #define VKSC_ENGINE_DATA_I_ATTITUDE_SOURCE_HPP

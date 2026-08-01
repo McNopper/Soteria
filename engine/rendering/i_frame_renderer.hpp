@@ -23,11 +23,8 @@
 /// The caller acquires an image, passes the index to RecordFrame, receives
 /// a command buffer, submits with its own synchronisation, and presents.
 ///
-/// @satisfies SWS_RENDER_100  IFrameRenderer decouples rendering from presentation.
-/// @satisfies SWS_RENDER_101  RecordFrame must be called only after the caller has
-///                            confirmed the GPU is not reading from the target framebuffer.
-/// @satisfies SRS-REND-001    Every renderer implements Init/Shutdown/RecordFrame.
-/// @satisfies SRS-REND-002    RecordFrame returns a command buffer; does not accept one.
+/// Contract: RecordFrame must be called only after the caller has confirmed
+/// the GPU is not reading from the target framebuffer.
 
 #ifndef VKSC_ENGINE_RENDERING_I_FRAME_RENDERER_HPP
 #define VKSC_ENGINE_RENDERING_I_FRAME_RENDERER_HPP

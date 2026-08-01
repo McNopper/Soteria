@@ -1,11 +1,9 @@
-/// @file SRS_SYNC_001_test.cpp
-/// @brief Qualification test for SRS-SYNC-001.
+/// @file frame_sync_qual_test.cpp
+/// @brief Qualification test for per-frame synchronisation object creation.
 ///
 /// Verifies: "The engine shall create one imageAvailable semaphore, one
 /// renderComplete semaphore, and one pre-signalled in-flight fence during
 /// FrameSync initialisation."
-///
-/// @satisfies SRS-SYNC-001
 
 #include <gtest/gtest.h>
 #include "engine/core/vksc_context.hpp"
@@ -13,7 +11,7 @@
 
 namespace engine {
 
-TEST(Qualification_SRS_SYNC_001, FrameSyncCreatesAllSyncObjects)
+TEST(Qualification_FrameSync, FrameSyncCreatesAllSyncObjects)
 {
     VkscContext ctx;
     VkscContextConfig cfg{};

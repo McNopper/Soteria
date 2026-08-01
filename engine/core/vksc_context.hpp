@@ -4,15 +4,6 @@
 /// VkscContext owns the VkInstance, the selected VkPhysicalDevice, and the
 /// VkDevice.  It is the first object created and the last destroyed.
 /// All methods are noexcept — exceptions are globally disabled.
-///
-/// @satisfies   SWS_Context_001  Context encapsulates all Vulkan SC handles.
-/// @satisfies   SWS_Context_002  Resource reservation is declared at Init time.
-/// @satisfies   SRS-INIT-001     Init creates instance, physical device, logical device, and queue.
-/// @satisfies   SRS-INIT-002     Resource reservations are declared upfront via VkscContextConfig.
-/// @satisfies   SRS-INIT-003     Two-pass physical device selection with preferredDriverId.
-/// @satisfies   SRS-INIT-005     Shutdown destroys all handles in reverse creation order.
-/// @verifiedby  UT_Context_001
-/// @verifiedby  UT_Context_002
 
 #ifndef VKSC_ENGINE_CORE_VKSC_CONTEXT_HPP
 #define VKSC_ENGINE_CORE_VKSC_CONTEXT_HPP
@@ -21,15 +12,10 @@
 
 #include <vulkan/vulkan_sc.h>
 
+#include <array>
 #include <cstdint>
 
 namespace engine {
-
-/// @brief Configuration passed to VkscContext::Init.
-///
-/// All fields have safe defaults.  Zero-initialise then override as needed.
-/// Callers must fill in all resource counts that match the objects they
-/// intend to create during the device lifetime (static allocation contract).
 
 /// @brief Declares object counts for VkDeviceObjectReservationCreateInfo.
 ///
@@ -66,6 +52,11 @@ struct VkscResourceReservation
     uint32_t maxImageViewArrayLayers{1U};
 };
 
+/// @brief Configuration passed to VkscContext::Init.
+///
+/// All fields have safe defaults.  Zero-initialise then override as needed.
+/// Callers must fill in all resource counts that match the objects they
+/// intend to create during the device lifetime (static allocation contract).
 struct VkscContextConfig
 {
     /// Application name written into VkApplicationInfo.
@@ -74,18 +65,21 @@ struct VkscContextConfig
     /// Engine name written into VkApplicationInfo.
     const char* engineName{nullptr};
 
-    /// Maximum number of physical devices to enumerate.
-    /// Must be >= 1 and <= kMaxPhysicalDevices (8).
-    uint32_t maxPhysicalDevices{1U};
+    /// Maximum number of physical devices to enumerate.  Enumeration stops at
+    /// the first maxPhysicalDevices devices reported by the driver.
+    /// Values above kMaxPhysicalDevices (8) are clamped; 0 is treated as 1.
+    /// The default (8) enumerates every device the driver reports.
+    static constexpr uint32_t kMaxPhysicalDevices{8U};
+    uint32_t maxPhysicalDevices{kMaxPhysicalDevices};
 
     /// Instance extensions to enable (e.g. VK_KHR_SURFACE_EXTENSION_NAME,
     /// VK_KHR_DISPLAY_EXTENSION_NAME).  Unused slots must remain nullptr.
     static constexpr uint32_t kMaxExtensions{8U};
-    const char* instanceExtensions[kMaxExtensions]{};
+    std::array<const char*, kMaxExtensions> instanceExtensions{};
     uint32_t    instanceExtensionCount{0U};
 
     /// Device extensions to enable (e.g. VK_KHR_SWAPCHAIN_EXTENSION_NAME).
-    const char* deviceExtensions[kMaxExtensions]{};
+    std::array<const char*, kMaxExtensions> deviceExtensions{};
     uint32_t    deviceExtensionCount{0U};
 
     /// Static object allocation contract.
@@ -180,7 +174,6 @@ public:
     [[nodiscard]] bool IsInitialised() const noexcept { return m_initialised; }
 
 private:
-    static constexpr uint32_t kMaxPhysicalDevices{8U};
     static constexpr uint32_t kMaxQueueFamilies{16U};
     static constexpr uint32_t kInvalidQueueFamily{0xFFFFFFFFU};
 
@@ -201,10 +194,12 @@ private:
     /// @param[out] outDevice         Receives the selected device handle.
     /// @param[out] outQueueFamily    Receives the graphics queue family index.
     /// @param      preferredDriverId Target driver ID or VkDriverId{0} for any.
+    /// @param      maxDevices        Enumeration cap (clamped to kMaxPhysicalDevices; 0 → 1).
     /// @returns Result::kOk on success.
     [[nodiscard]] Result SelectPhysicalDevice(VkPhysicalDevice& outDevice,
                                               uint32_t&         outQueueFamily,
-                                              VkDriverId        preferredDriverId) const noexcept;
+                                              VkDriverId        preferredDriverId,
+                                              uint32_t          maxDevices) const noexcept;
 };
 
 } /* namespace engine */

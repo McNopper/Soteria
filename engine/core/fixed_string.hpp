@@ -11,8 +11,8 @@
 /// Primary use: constructing log messages inside `if constexpr (log::kEnabled)`
 /// blocks so the entire message-building path is compiled away in production.
 ///
-/// @satisfies SWS_Log_003  Log support code must not use C-library string functions.
-/// @satisfies SWS_Log_004  Log support code must not allocate dynamic memory.
+/// MISRA C++:2023 Rule 7.0.3: the numerical value of a character is never
+/// used — decimal digits are produced via a lookup table, not '0' + n.
 
 #ifndef VKSC_ENGINE_CORE_FIXED_STRING_HPP
 #define VKSC_ENGINE_CORE_FIXED_STRING_HPP
@@ -33,7 +33,7 @@ class FixedString
     static_assert(kCapacity >= 2U, "FixedString capacity must be at least 2");
 
 public:
-    FixedString() noexcept : m_buf{}, m_len{0U} {}
+    FixedString() noexcept = default;
 
     FixedString(const FixedString&)            = delete;
     FixedString& operator=(const FixedString&) = delete;
@@ -94,7 +94,7 @@ public:
         {
             while ((val != 0U) && (pos < tmp.size()))
             {
-                tmp[pos++] = static_cast<char>('0' + static_cast<int32_t>(val % 10U));
+                tmp[pos++] = kDecChars[val % 10U];
                 val /= 10U;
             }
         }
@@ -125,7 +125,7 @@ public:
         {
             while ((val != 0U) && (pos < tmp.size()))
             {
-                tmp[pos++] = static_cast<char>('0' + static_cast<int32_t>(val % 10ULL));
+                tmp[pos++] = kDecChars[val % 10ULL];
                 val /= 10ULL;
             }
         }
@@ -220,9 +220,12 @@ public:
         if (clampedDec > 0U)
         {
             Append(".");
-            // Left-pad fractional part with zeros if needed.
+            // Left-pad the fractional part with zeros if needed.  The final
+            // digit always comes from AppendUDec (even when fracPart == 0),
+            // so the loop must stop at padScale == 1 to avoid one zero too
+            // many (e.g. 9.99 with 1 decimal → "10.0", not "10.00").
             uint32_t padScale = scale / 10U;
-            while ((padScale >= 1U) && (fracPart < padScale))
+            while ((padScale > 1U) && (fracPart < padScale))
             {
                 Append("0");
                 padScale /= 10U;
@@ -244,8 +247,15 @@ public:
     [[nodiscard]] uint32_t Len() const noexcept { return m_len; }
 
 private:
-    std::array<char, kCapacity> m_buf;
-    uint32_t                    m_len;
+    /// Decimal digit characters as a lookup table.
+    ///
+    /// Used instead of '0' + n arithmetic so the numerical value of a
+    /// character is never used (MISRA C++:2023 Rule 7.0.3).
+    static constexpr std::array<char, 10U> kDecChars{
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+
+    std::array<char, kCapacity> m_buf{};
+    uint32_t                    m_len{0U};
 };
 
 } /* namespace log */

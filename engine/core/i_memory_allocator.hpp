@@ -6,8 +6,9 @@
 /// use the system allocator.  This file contains the interface only — one
 /// class per header, per coding rules.
 ///
-/// @satisfies   SWS_Memory_001  The allocator is replaceable at construction time.
-/// @verifiedby  UT_Memory_001
+/// @note Reserved for future certification builds: no engine component
+///       allocates memory today (all storage is fixed-size), so the interface
+///       is currently not wired into any subsystem.
 
 #ifndef VKSC_ENGINE_CORE_I_MEMORY_ALLOCATOR_HPP
 #define VKSC_ENGINE_CORE_I_MEMORY_ALLOCATOR_HPP

@@ -3,12 +3,10 @@
 ///
 /// Allocates a VkBuffer with VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 /// VK_MEMORY_PROPERTY_HOST_COHERENT_BIT and keeps it persistently mapped.
-/// Callers write vertices by memcpy-ing directly into MappedPtr().
+/// Callers upload vertex data through the bounds-checked Write() method;
+/// direct pointer access is available via MappedPtr() for special cases.
 ///
 /// No dynamic memory allocation.
-///
-/// @satisfies SWS_RENDER_030  VertexBuffer owns buffer and memory handles.
-/// @satisfies SWS_RENDER_031  Persistent mapping eliminates per-frame map/unmap.
 
 #ifndef VKSC_ENGINE_RENDERING_VERTEX_BUFFER_HPP
 #define VKSC_ENGINE_RENDERING_VERTEX_BUFFER_HPP
@@ -48,19 +46,27 @@ public:
     /// @brief Unmap and free buffer + memory.  Safe on partial init.
     void Shutdown(VkDevice device) noexcept;
 
+    /// @brief Copy @p bytes from @p data into the mapped buffer at offset 0.
+    ///
+    /// Bounds-checked: fails with Result::kInvalidArgument when @p data is
+    /// null, @p bytes is zero, or @p bytes exceeds the buffer size.
+    ///
+    /// The memory is host-coherent — no explicit flush is required.
+    ///
+    /// @param data   Source bytes.  Must point to at least @p bytes readable
+    ///               bytes for the duration of the call.
+    /// @param bytes  Number of bytes to copy.
+    /// @returns Result::kOk on success.
+    [[nodiscard]] Result Write(const void* data, uint32_t bytes) const noexcept;
+
     /// @returns VkBuffer handle.
     [[nodiscard]] VkBuffer Buffer() const noexcept { return m_buffer; }
 
-    /// @returns Persistently-mapped write pointer.  Valid between Init and Shutdown.
+    /// @returns Persistently-mapped write pointer.  Valid between Init and
+    ///          Shutdown.  Prefer Write() — casting this pointer to a typed
+    ///          pointer requires a MISRA C++:2023 Rule 8.2.6 deviation at the
+    ///          call site.
     [[nodiscard]] void* MappedPtr() const noexcept { return m_mapped; }
-
-    /// @returns Persistently-mapped write pointer as a byte pointer.
-    /// Use with std::copy for type-safe byte-level writes to the buffer.
-    /// Valid between Init and Shutdown.
-    [[nodiscard]] uint8_t* MappedBytes() const noexcept
-    {
-        return static_cast<uint8_t*>(m_mapped);
-    }
 
     /// @returns Allocated buffer size in bytes.
     [[nodiscard]] uint32_t SizeBytes() const noexcept { return m_sizeBytes; }
