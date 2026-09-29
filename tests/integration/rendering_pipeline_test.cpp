@@ -103,6 +103,7 @@ TEST_F(RenderingPipelineTest, PipelineCacheScInitOnRealDevice)
     // The embedded cache was declared in the device reservation during SetUp,
     // so the VulkanSC driver accepts this same binary here.
     Result r = m_cache.Init(m_ctx.Device(),
+                            m_ctx.PhysicalDevice(),
                             sim::kPipelineCacheData,
                             sim::kPipelineCacheDataSize);
     EXPECT_EQ(r, Result::kOk);
@@ -119,6 +120,7 @@ TEST_F(RenderingPipelineTest, OrderedShutdownResetsAllHandles)
     ASSERT_EQ(m_sync.Init(m_ctx.Device()), Result::kOk);
 
     ASSERT_EQ(m_cache.Init(m_ctx.Device(),
+                           m_ctx.PhysicalDevice(),
                            sim::kPipelineCacheData,
                            sim::kPipelineCacheDataSize),
               Result::kOk);

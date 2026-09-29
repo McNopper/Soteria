@@ -32,6 +32,45 @@ constexpr uint32_t kEngineVersion = VK_MAKE_API_VERSION(0U, 0U, 1U, 0U);
 constexpr const char* kDefaultAppName    = "soteria-app";
 constexpr const char* kDefaultEngineName = "soteria";
 
+/// Maximum fault entries drained per DrainFaults call (fixed-size, no alloc).
+/// Clamped to the device's maxQueryFaultCount limit at Init.
+constexpr uint32_t kMaxFaultEntries{32U};
+
+/// Translate a driver fault level to the engine-facing (Vulkan-free) enum.
+[[nodiscard]] core::FaultLevel ToEngineFaultLevel(const VkFaultLevel level) noexcept
+{
+    core::FaultLevel out{core::FaultLevel::eUnassigned};
+    switch (level)
+    {
+        case VK_FAULT_LEVEL_WARNING:     out = core::FaultLevel::eWarning;     break;
+        case VK_FAULT_LEVEL_RECOVERABLE: out = core::FaultLevel::eRecoverable; break;
+        case VK_FAULT_LEVEL_CRITICAL:    out = core::FaultLevel::eCritical;    break;
+        case VK_FAULT_LEVEL_UNASSIGNED:
+        case VK_FAULT_LEVEL_MAX_ENUM:
+        default:                         out = core::FaultLevel::eUnassigned;  break;
+    }
+    return out;
+}
+
+/// Translate a driver fault type to the engine-facing (Vulkan-free) enum.
+[[nodiscard]] core::FaultType ToEngineFaultType(const VkFaultType type) noexcept
+{
+    core::FaultType out{core::FaultType::eUnassigned};
+    switch (type)
+    {
+        case VK_FAULT_TYPE_INVALID:             out = core::FaultType::eInvalid;           break;
+        case VK_FAULT_TYPE_IMPLEMENTATION:      out = core::FaultType::eImplementation;    break;
+        case VK_FAULT_TYPE_SYSTEM:              out = core::FaultType::eSystem;            break;
+        case VK_FAULT_TYPE_PHYSICAL_DEVICE:     out = core::FaultType::ePhysicalDevice;    break;
+        case VK_FAULT_TYPE_COMMAND_BUFFER_FULL: out = core::FaultType::eCommandBufferFull; break;
+        case VK_FAULT_TYPE_INVALID_API_USAGE:   out = core::FaultType::eInvalidApiUsage;   break;
+        case VK_FAULT_TYPE_UNASSIGNED:
+        case VK_FAULT_TYPE_MAX_ENUM:
+        default:                                out = core::FaultType::eUnassigned;        break;
+    }
+    return out;
+}
+
 } /* anonymous namespace */
 
 // ---- Init -------------------------------------------------------------------
@@ -90,6 +129,9 @@ Result VkscContext::Init(const VkscContextConfig& config) noexcept
         m_instance = VK_NULL_HANDLE;
         return selectResult;
     }
+
+    // ---- 3b. Capture implementation identity (SCID-7) -----------------------
+    CaptureIdentity();
 
     // ---- 4. Queue create info -----------------------------------------------
     const float queuePriority{1.0F};
@@ -240,9 +282,110 @@ void VkscContext::Shutdown() noexcept
 
     m_physicalDevice      = VK_NULL_HANDLE;
     m_graphicsQueueFamily = kInvalidQueueFamily;
+    m_identity            = VkscDeviceIdentity{};
+    m_maxQueryFaultCount  = 0U;
     m_initialised         = false;
 
     log::Info("VkscContext: shutdown complete.");
+}
+
+// ---- CaptureIdentity ----------------------------------------------------------
+
+void VkscContext::CaptureIdentity() noexcept
+{
+    VkPhysicalDeviceDriverProperties driverProps{};
+    driverProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES;
+    driverProps.pNext = nullptr;
+
+    VkPhysicalDeviceVulkanSC10Properties sc10Props{};
+    sc10Props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_SC_1_0_PROPERTIES;
+    sc10Props.pNext = &driverProps;
+
+    VkPhysicalDeviceProperties2 props2{};
+    props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    props2.pNext = &sc10Props;
+
+    vkGetPhysicalDeviceProperties2(m_physicalDevice, &props2);
+
+    m_identity.vendorID      = props2.properties.vendorID;
+    m_identity.deviceID      = props2.properties.deviceID;
+    m_identity.driverVersion = props2.properties.driverVersion;
+    m_identity.apiVersion    = props2.properties.apiVersion;
+    m_identity.driverID      = driverProps.driverID;
+
+    // Bounded copy of the NUL-terminated device name (C library string
+    // functions are not used, MISRA C++:2023 Rule 21.2.2).
+    uint32_t i{0U};
+    while ((i < (VK_MAX_PHYSICAL_DEVICE_NAME_SIZE - 1U)) &&
+           (props2.properties.deviceName[i] != '\0'))
+    {
+        m_identity.deviceName[i] = props2.properties.deviceName[i];
+        ++i;
+    }
+    m_identity.deviceName[i] = '\0';
+
+    // VUID-vkGetFaultData-pFaultCount-05020 caps each query at this limit.
+    m_maxQueryFaultCount = (sc10Props.maxQueryFaultCount > 0U)
+                               ? sc10Props.maxQueryFaultCount
+                               : kMaxFaultEntries;
+
+    if constexpr (engine::log::kEnabled)
+    {
+        engine::log::FixedString<256U> s;
+        s.Append("VkscContext: identity vendorID=0x")
+         .AppendHex(m_identity.vendorID, 4U)
+         .Append(" deviceID=0x")
+         .AppendHex(m_identity.deviceID, 4U)
+         .Append(" api=")
+         .AppendHex(m_identity.apiVersion, 8U)
+         .Append(" name=")
+         .Append(m_identity.deviceName);
+        log::Info(s.CStr());
+    }
+}
+
+// ---- DrainFaults --------------------------------------------------------------
+
+void VkscContext::DrainFaults(core::IFaultSink& sink) const noexcept
+{
+    if (!m_initialised)
+    {
+        return;
+    }
+
+    // Single-call pattern with a static allocation (spec-recommended):
+    // sized to the device limit so VK_INCOMPLETE cannot occur and the
+    // count-then-fetch race is avoided.
+    std::array<VkFaultData, kMaxFaultEntries> faults{};
+    for (VkFaultData& f : faults)
+    {
+        f.sType = VK_STRUCTURE_TYPE_FAULT_DATA;
+        f.pNext = nullptr;
+    }
+
+    uint32_t faultCount = (m_maxQueryFaultCount < kMaxFaultEntries)
+                              ? m_maxQueryFaultCount
+                              : kMaxFaultEntries;
+    VkBool32 unrecorded{VK_FALSE};
+
+    const VkResult r = vkGetFaultData(m_device,
+                                      VK_FAULT_QUERY_BEHAVIOR_GET_AND_CLEAR_ALL_FAULTS,
+                                      &unrecorded, &faultCount, faults.data());
+    if ((r != VK_SUCCESS) && (r != VK_INCOMPLETE))
+    {
+        log::Warn("VkscContext: vkGetFaultData failed.");
+        return;
+    }
+
+    for (uint32_t i{0U}; i < faultCount; ++i)
+    {
+        sink.OnFault(ToEngineFaultLevel(faults[i].faultLevel),
+                     ToEngineFaultType(faults[i].faultType));
+    }
+    if (unrecorded == VK_TRUE)
+    {
+        sink.OnUnrecordedFaults();
+    }
 }
 
 // ---- SelectPhysicalDevice ---------------------------------------------------

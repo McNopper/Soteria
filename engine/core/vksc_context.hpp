@@ -9,6 +9,7 @@
 #define VKSC_ENGINE_CORE_VKSC_CONTEXT_HPP
 
 #include "result.hpp"
+#include "i_fault_sink.hpp"
 
 #include <vulkan/vulkan_sc.h>
 
@@ -16,6 +17,21 @@
 #include <cstdint>
 
 namespace engine {
+
+/// @brief Identity of the selected Vulkan SC implementation (SCID-7).
+///
+/// Captured at Init for certification configuration records and telemetry:
+/// a safety case must be able to state exactly which driver/device build
+/// produced any given output.
+struct VkscDeviceIdentity
+{
+    uint32_t  vendorID{0U};
+    uint32_t  deviceID{0U};
+    uint32_t  driverVersion{0U};
+    uint32_t  apiVersion{0U};          ///< As reported by the physical device.
+    VkDriverId driverID{static_cast<VkDriverId>(0)};
+    char      deviceName[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE]{};
+};
 
 /// @brief Declares object counts for VkDeviceObjectReservationCreateInfo.
 ///
@@ -142,7 +158,7 @@ public:
     ///        reserve minimal resources, create logical device.
     ///
     /// May only be called once.  Calling Init on an already-initialised
-    /// context returns kError without modifying state.
+    /// context returns Result::kAlreadyInitialised without modifying state.
     ///
     /// @param config  Configuration parameters.
     /// @returns Result::kOk on success; a specific error code otherwise.
@@ -173,6 +189,20 @@ public:
     /// @brief Return true when the context has been successfully initialised.
     [[nodiscard]] bool IsInitialised() const noexcept { return m_initialised; }
 
+    /// @brief Identity of the selected implementation (valid after Init).
+    [[nodiscard]] const VkscDeviceIdentity& Identity() const noexcept { return m_identity; }
+
+    /// @brief Drain driver-recorded faults to @p sink (call once per frame).
+    ///
+    /// Polls vkGetFaultData with VK_FAULT_QUERY_BEHAVIOR_GET_AND_CLEAR_ALL_FAULTS,
+    /// forwarding every recorded fault — and the unrecorded-faults overflow
+    /// flag — to the sink.  Safe to call from any thread (the command is
+    /// internally synchronized) but intended for the render thread's frame
+    /// schedule.  No-op when the context is not initialised.
+    ///
+    /// @param sink  Fault receiver (app-owned; reaction policy lives there).
+    void DrainFaults(core::IFaultSink& sink) const noexcept;
+
 private:
     static constexpr uint32_t kMaxQueueFamilies{16U};
     static constexpr uint32_t kInvalidQueueFamily{0xFFFFFFFFU};
@@ -182,6 +212,8 @@ private:
     VkDevice         m_device{VK_NULL_HANDLE};
     VkQueue          m_graphicsQueue{VK_NULL_HANDLE};
     uint32_t         m_graphicsQueueFamily{kInvalidQueueFamily};
+    VkscDeviceIdentity m_identity{};
+    uint32_t         m_maxQueryFaultCount{0U};
     bool             m_initialised{false};
 
     /// @brief Select a physical device that supports a graphics queue.
@@ -200,6 +232,10 @@ private:
                                               uint32_t&         outQueueFamily,
                                               VkDriverId        preferredDriverId,
                                               uint32_t          maxDevices) const noexcept;
+
+    /// @brief Record vendor/device/driver identity and SC limits of the
+    ///        selected physical device (SCID-7 configuration record).
+    void CaptureIdentity() noexcept;
 };
 
 } /* namespace engine */

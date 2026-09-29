@@ -43,6 +43,13 @@ engine::Result HorizonRenderer::Init(
         engine::log::Error("HorizonRenderer::Init: no image views supplied.");
         return engine::Result::kInvalidArgument;
     }
+    if (cfg.imageCount > kMaxFramebuffers)
+    {
+        // m_framebuffers is a fixed-size array of kMaxFramebuffers entries;
+        // accepting more views would overflow it (MISRA C++:2023 Rule 8.7.1).
+        engine::log::Error("HorizonRenderer::Init: imageCount exceeds kMaxFramebuffers.");
+        return engine::Result::kInvalidArgument;
+    }
     if (cfg.colorFormat == VK_FORMAT_UNDEFINED)
     {
         engine::log::Error("HorizonRenderer::Init: undefined colour format.");
@@ -57,7 +64,8 @@ engine::Result HorizonRenderer::Init(
     r = CreatePipelineLayout(cfg.device);
     if (!engine::IsOk(r)) { DestroyAll(cfg.device); return r; }
 
-    r = m_pipelineCache.Init(cfg.device, sim::kPipelineCacheData, sim::kPipelineCacheDataSize);
+    r = m_pipelineCache.Init(cfg.device, cfg.physDevice,
+                             sim::kPipelineCacheData, sim::kPipelineCacheDataSize);
     if (!engine::IsOk(r))
     {
         engine::log::Error("HorizonRenderer: PipelineCacheSc::Init failed.");

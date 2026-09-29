@@ -22,7 +22,10 @@ Result FrameSync::Init(VkDevice device) noexcept
         return Result::kInvalidArgument;
     }
 
-    const VkSemaphoreCreateInfo semCI{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, nullptr, 0U};
+    VkSemaphoreCreateInfo semCI{};
+    semCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    semCI.pNext = nullptr;
+    semCI.flags = 0U;
 
     VkResult r = vkCreateSemaphore(device, &semCI, nullptr, &m_imageAvailable);
     if (r != VK_SUCCESS)
@@ -41,8 +44,10 @@ Result FrameSync::Init(VkDevice device) noexcept
     }
 
     // Create fence in the signalled state so the first WaitAndReset succeeds.
-    const VkFenceCreateInfo fenceCI{
-        VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, nullptr, VK_FENCE_CREATE_SIGNALED_BIT};
+    VkFenceCreateInfo fenceCI{};
+    fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceCI.pNext = nullptr;
+    fenceCI.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     r = vkCreateFence(device, &fenceCI, nullptr, &m_inFlight);
     if (r != VK_SUCCESS)
@@ -50,7 +55,7 @@ Result FrameSync::Init(VkDevice device) noexcept
         log::Error("FrameSync: vkCreateFence failed.");
         vkDestroySemaphore(device, m_renderComplete,  nullptr);
         vkDestroySemaphore(device, m_imageAvailable, nullptr);
-        m_renderComplete  = VK_NULL_HANDLE;
+        m_renderComplete = VK_NULL_HANDLE;
         m_imageAvailable = VK_NULL_HANDLE;
         return Result::kVkscSyncFailed;
     }

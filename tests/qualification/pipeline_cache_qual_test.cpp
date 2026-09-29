@@ -24,14 +24,15 @@ TEST(Qualification_PipelineCache, NullDeviceReturnsInvalidArgument)
     rendering::PipelineCacheSc cache;
     std::array<uint8_t, 8U> data{0x01U, 0x02U, 0x03U, 0x04U,
                                  0x05U, 0x06U, 0x07U, 0x08U};
-    EXPECT_EQ(cache.Init(VK_NULL_HANDLE, data.data(), static_cast<uint32_t>(data.size())),
+    EXPECT_EQ(cache.Init(VK_NULL_HANDLE, VK_NULL_HANDLE,
+                         data.data(), static_cast<uint32_t>(data.size())),
               Result::kInvalidArgument);
 }
 
 TEST(Qualification_PipelineCache, NullDataReturnsInvalidArgument)
 {
     rendering::PipelineCacheSc cache;
-    EXPECT_EQ(cache.Init(VK_NULL_HANDLE, nullptr, 8U),
+    EXPECT_EQ(cache.Init(VK_NULL_HANDLE, VK_NULL_HANDLE, nullptr, 8U),
               Result::kInvalidArgument);
 }
 
@@ -39,7 +40,7 @@ TEST(Qualification_PipelineCache, ZeroSizeReturnsInvalidArgument)
 {
     rendering::PipelineCacheSc cache;
     std::array<uint8_t, 4U> data{};
-    EXPECT_EQ(cache.Init(VK_NULL_HANDLE, data.data(), 0U),
+    EXPECT_EQ(cache.Init(VK_NULL_HANDLE, VK_NULL_HANDLE, data.data(), 0U),
               Result::kInvalidArgument);
 }
 
@@ -77,6 +78,7 @@ TEST(Qualification_PipelineCache, InitCreatesPipelineCacheHandle)
 
     rendering::PipelineCacheSc cache;
     ASSERT_EQ(cache.Init(ctx.Device(),
+                         ctx.PhysicalDevice(),
                          sim::kPipelineCacheData,
                          sim::kPipelineCacheDataSize),
               Result::kOk);

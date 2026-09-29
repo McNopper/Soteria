@@ -62,7 +62,10 @@ Result VertexBuffer::Init(VkDevice device, VkPhysicalDevice physDevice,
                   "memoryTypeBits shift would exceed uint32_t width — "
                   "review if VK_MAX_MEMORY_TYPES ever grows beyond 32");
 
-    uint32_t memTypeIdx{0xFFFFFFFFU};
+    // Sentinel for "no suitable memory type found" (valid indices are < 32).
+    constexpr uint32_t kInvalidMemoryType{0xFFFFFFFFU};
+
+    uint32_t memTypeIdx{kInvalidMemoryType};
     for (uint32_t mt{0U}; mt < memProps.memoryTypeCount; ++mt)
     {
         const bool typeBitSet =
@@ -77,7 +80,7 @@ Result VertexBuffer::Init(VkDevice device, VkPhysicalDevice physDevice,
         }
     }
 
-    if (memTypeIdx == 0xFFFFFFFFU)
+    if (memTypeIdx == kInvalidMemoryType)
     {
         log::Error("VertexBuffer: no suitable host-visible memory type found.");
         vkDestroyBuffer(device, m_buffer, nullptr);

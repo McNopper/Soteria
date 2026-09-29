@@ -59,6 +59,8 @@
 #include "../engine/core/vksc_context.hpp"
 #include "../engine/core/log.hpp"
 #include "../engine/core/result.hpp"
+#include "../engine/core/frame_budget.hpp"
+#include "../engine/data/i_health_monitor.hpp"
 #include "../engine/wsi/display_output.hpp"
 #include "../engine/rendering/swapchain.hpp"
 #include "../engine/rendering/frame_sync.hpp"
@@ -68,6 +70,7 @@
 
 #include "demo/demo_attitude_source.hpp"
 #include "demo/console_frame_report.hpp"
+#include "demo/console_health_monitor.hpp"
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -318,8 +321,20 @@ int main()
     // -----------------------------------------------------------------------
     // 7. Data sources and telemetry.
     // -----------------------------------------------------------------------
-    sim::demo::DemoAttitudeSource  attitudeSource{};
-    sim::demo::ConsoleFrameReport  frameReport{};
+    sim::demo::DemoAttitudeSource   attitudeSource{};
+    sim::demo::ConsoleFrameReport   frameReport{};
+    sim::demo::ConsoleHealthMonitor healthMonitor{};
+
+    // Frame deadline monitoring: a safety-critical display must produce a
+    // fresh frame every display period.  Budget = 60 Hz; 3 consecutive
+    // misses escalate a FrameDeadlineMiss health event.
+    engine::core::FrameBudgetMonitor frameBudget{};
+    {
+        engine::core::FrameBudgetMonitor::Config budgetCfg{};
+        budgetCfg.deadlineMs           = 1000.0F / 60.0F;
+        budgetCfg.maxConsecutiveMisses = 3U;
+        frameBudget.Init(budgetCfg);
+    }
 
     // -----------------------------------------------------------------------
     // 8. Frame loop.
@@ -328,15 +343,23 @@ int main()
 
     // Query performance frequency once — it does not change at runtime.
     // The (void) casts explicitly discard the Win32 BOOL returns (Rule 0.1.2);
-    // on any supported Windows version these calls cannot fail.
+    // on any supported Windows version these calls cannot fail.  The fallback
+    // guards the telemetry division against a hypothetical zero frequency.
     LARGE_INTEGER perfFreq{};
     (void)QueryPerformanceFrequency(&perfFreq);
+    if (perfFreq.QuadPart <= 0) { perfFreq.QuadPart = 1; }
 
     bool loopRunning = true;
+    bool budgetEscalated = false;
     uint64_t frameNumber = 0U;
 
     while (loopRunning)
     {
+        // --- 8.0 Drain driver-recorded faults (core Vulkan SC fault handling).
+        //     Per-frame poll on the deterministic frame schedule; a critical
+        //     fault surfaces as a DriverFault health event via the sink.
+        ctx.DrainFaults(healthMonitor);
+
         // --- 8.1 Wait for the in-flight fence, then reset it. ---
         {
             const engine::Result r = sync.WaitAndReset(ctx.Device());
@@ -344,6 +367,11 @@ int main()
             {
                 engine::log::Error("main: WaitAndReset failed — aborting.");
                 engine::log::Error(engine::ResultToString(r));
+                healthMonitor.OnHealthEvent(
+                    (r == engine::Result::kVkscTimeoutFailed)
+                        ? engine::data::HealthEvent::eGpuHang
+                        : engine::data::HealthEvent::eDeviceLost,
+                    frameNumber);
                 loopRunning = false;
                 break;
             }
@@ -351,6 +379,13 @@ int main()
 
         // --- 8.2 Sample attitude data. ---
         const engine::data::AttitudeData attitude = attitudeSource.GetAttitude();
+        if (!attitude.valid)
+        {
+            // Sensor fault: the renderer shows the failure indication; the
+            // monitor is informed so the system can escalate if it persists.
+            healthMonitor.OnHealthEvent(engine::data::HealthEvent::eInputDataInvalid,
+                                        frameNumber);
+        }
 
         // --- 8.3 Acquire next swapchain image. ---
         uint32_t imageIndex = 0U;
@@ -367,12 +402,19 @@ int main()
             {
                 // Display resize or mode change — not expected in our fixed-mode setup.
                 engine::log::Error("main: swapchain out of date — aborting.");
+                healthMonitor.OnHealthEvent(engine::data::HealthEvent::eSurfaceLost,
+                                            frameNumber);
                 loopRunning = false;
                 break;
             }
             if (vr != VK_SUCCESS)
             {
                 engine::log::Error("main: vkAcquireNextImageKHR failed — aborting.");
+                healthMonitor.OnHealthEvent(
+                    (vr == VK_ERROR_DEVICE_LOST)
+                        ? engine::data::HealthEvent::eDeviceLost
+                        : engine::data::HealthEvent::eAcquireFailed,
+                    frameNumber);
                 loopRunning = false;
                 break;
             }
@@ -386,6 +428,8 @@ int main()
         if (cmdBuf == VK_NULL_HANDLE)
         {
             engine::log::Error("main: RecordFrame returned null — aborting.");
+            healthMonitor.OnHealthEvent(engine::data::HealthEvent::eRecordFailed,
+                                        frameNumber);
             loopRunning = false;
             break;
         }
@@ -424,6 +468,11 @@ int main()
             if (vr != VK_SUCCESS)
             {
                 engine::log::Error("main: vkQueueSubmit failed — aborting.");
+                healthMonitor.OnHealthEvent(
+                    (vr == VK_ERROR_DEVICE_LOST)
+                        ? engine::data::HealthEvent::eDeviceLost
+                        : engine::data::HealthEvent::eSubmitFailed,
+                    frameNumber);
                 loopRunning = false;
                 break;
             }
@@ -447,16 +496,46 @@ int main()
             if ((vr != VK_SUCCESS) && (vr != VK_SUBOPTIMAL_KHR))
             {
                 engine::log::Error("main: vkQueuePresentKHR failed — aborting.");
+                healthMonitor.OnHealthEvent(
+                    (vr == VK_ERROR_DEVICE_LOST)
+                        ? engine::data::HealthEvent::eDeviceLost
+                        : (vr == VK_ERROR_SURFACE_LOST_KHR)
+                            ? engine::data::HealthEvent::eSurfaceLost
+                            : engine::data::HealthEvent::ePresentFailed,
+                    frameNumber);
                 framePresented = false;
                 loopRunning = false;
             }
+            else
+            {
+                // Heartbeat: an external watchdog proves liveness from these
+                // calls even when no fault path ever fires.
+                healthMonitor.Kick(frameNumber);
+            }
         }
 
-        // --- 8.7 Telemetry. ---
+        // --- 8.7 Telemetry + frame budget. ---
         {
             const float renderMs =
                 static_cast<float>(recordEnd.QuadPart - recordStart.QuadPart) *
                 1000.0F / static_cast<float>(perfFreq.QuadPart);
+
+            (void)frameBudget.RecordFrame(renderMs);
+            if (frameBudget.Escalated() && !budgetEscalated)
+            {
+                // Edge-triggered: one event per sustained-miss episode.
+                healthMonitor.OnHealthEvent(
+                    engine::data::HealthEvent::eFrameDeadlineMiss, frameNumber);
+                budgetEscalated = true;
+            }
+            else if (!frameBudget.Escalated())
+            {
+                budgetEscalated = false;  // re-arm after a healthy stretch
+            }
+            else
+            {
+                // still escalated — event already raised for this episode
+            }
 
             engine::data::FrameMetrics metrics{};
             metrics.frameNumber       = frameNumber;

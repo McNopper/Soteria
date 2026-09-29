@@ -10,6 +10,19 @@
 namespace engine {
 namespace rendering {
 
+namespace {
+
+/// VkSurfaceCapabilitiesKHR::currentExtent.width uses this sentinel when the
+/// surface size is not dictated by the display (Vulkan spec, 34.4.1).
+constexpr uint32_t kUndefinedExtent{0xFFFFFFFFU};
+
+/// Fallback render resolution when the surface reports no current extent and
+/// the caller supplies no preference.
+constexpr uint32_t kFallbackWidth{1280U};
+constexpr uint32_t kFallbackHeight{720U};
+
+} /* anonymous namespace */
+
 // ---- Init -------------------------------------------------------------------
 
 Result SwapchainSc::Init(const Config& cfg) noexcept
@@ -71,14 +84,14 @@ Result SwapchainSc::Init(const Config& cfg) noexcept
 
     // ---- Select extent -----------------------------------------------------
     VkExtent2D extent{};
-    if (caps.currentExtent.width != 0xFFFFFFFFU)
+    if (caps.currentExtent.width != kUndefinedExtent)
     {
         extent = caps.currentExtent;
     }
     else
     {
-        extent.width  = (cfg.preferredWidth  > 0U) ? cfg.preferredWidth  : 1280U;
-        extent.height = (cfg.preferredHeight > 0U) ? cfg.preferredHeight : 720U;
+        extent.width  = (cfg.preferredWidth  > 0U) ? cfg.preferredWidth  : kFallbackWidth;
+        extent.height = (cfg.preferredHeight > 0U) ? cfg.preferredHeight : kFallbackHeight;
         if (extent.width  < caps.minImageExtent.width)  { extent.width  = caps.minImageExtent.width; }
         if (extent.height < caps.minImageExtent.height) { extent.height = caps.minImageExtent.height; }
         if (extent.width  > caps.maxImageExtent.width)  { extent.width  = caps.maxImageExtent.width; }

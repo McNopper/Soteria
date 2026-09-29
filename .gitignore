@@ -63,3 +63,8 @@ desktop.ini
 # ── Crash dumps ───────────────────────────────────────────────────────────────
 *.dmp
 *.dump
+
+# ── Reference documents ───────────────────────────────────────────────────────
+# Licensed third-party reference documents (e.g. MISRA C++:2023 PDF) live here
+# for local use only.  They are licensed material and must never be committed.
+references/

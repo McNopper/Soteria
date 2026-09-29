@@ -28,3 +28,5 @@ gtest_discover_tests(soteria-unit-tests
     TEST_PREFIX "unit."
     PROPERTIES LABELS "unit"
 )
+
+soteria_stage_runtime_dlls(soteria-unit-tests)

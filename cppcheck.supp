@@ -1,0 +1,16 @@
+# cppcheck suppressions — Soteria
+#
+# Format: one suppression id per line (optionally id:file:line).
+# Keep this list short and justified — the same discipline as MISRA
+# deviations: prefer inline // cppcheck-suppress comments for one-off,
+# local suppressions over global entries here.
+
+# System/SDK headers (Vulkan SC, Windows SDK) are not analysed; silence the
+# advisory that fires when cppcheck cannot find them.
+missingIncludeSystem
+
+# Informational messages produced by cppcheck itself, not code findings.
+checkersReport
+
+# Do not fail when a suppression in this file matches nothing.
+unmatchedSuppression

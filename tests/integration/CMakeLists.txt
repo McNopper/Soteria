@@ -26,3 +26,5 @@ gtest_discover_tests(soteria-integration-tests
     TEST_PREFIX "integration."
     PROPERTIES LABELS "integration"
 )
+
+soteria_stage_runtime_dlls(soteria-integration-tests)

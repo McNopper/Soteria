@@ -20,22 +20,30 @@
 #
 # One clang-tidy check may enforce several rules; only the closest rule is
 # cited per check.
+#
+# Legal note: MISRA C++:2023 guideline content is © The MISRA Consortium
+# Limited and licensed per-copy — the licensed document itself is NOT
+# distributed with this project (references/ is gitignored).  Only rule
+# numbers, categories and short paraphrased summaries appear here, as is
+# required for compliance traceability (MISRA Compliance:2020).  "MISRA" is
+# a registered trademark of The MISRA Consortium Limited; no endorsement is
+# implied.
 
 ---
 Checks: >
   -*,
 
   # ── 0 Analysis ────────────────────────────────────────────────────────────
-  # Rule 0.0.1 (Required): A function shall not contain unreachable statements
+  # Rule 0.0.1 (Required): no unreachable statements in a function
   #   — enforced by compiler -Wunreachable-code (part of /W4) and:
   clang-analyzer-deadcode.*,
 
-  # Rule 0.1.2 (Required): The value returned by a function shall be used
+  # Rule 0.1.2 (Required): function return values must not be silently ignored
   #   — enforced at compile time via [[nodiscard]] + /W4; see also
   #   bugprone-unused-return-value below.
   bugprone-unused-return-value,
 
-  # Rule 0.2.2 (Required): A named function parameter shall be used at least once
+  # Rule 0.2.2 (Required): every named function parameter must be used
   misc-unused-parameters,
 
   # ── 4 [intro] General ─────────────────────────────────────────────────────
@@ -47,135 +55,134 @@ Checks: >
   bugprone-dangling-handle,
   bugprone-infinite-loop,
 
-  # Rule 4.6.1 (Required): Operations on a memory location shall be sequenced
-  # appropriately — partly enforced by:
+  # Rule 4.6.1 (Required): memory operations must be appropriately sequenced
+  #   — partly enforced by:
   bugprone-suspicious-semicolon,
   misc-redundant-expression,
 
   # ── 5 [lex] Lexical conventions ───────────────────────────────────────────
-  # Rule 5.0.1 (Advisory): Trigraph-like sequences should not be used
+  # Rule 5.0.1 (Advisory): avoid trigraph-like sequences
   #   — enforced by the compiler (C++17 removed trigraphs).
-  # Rule 5.7.1 (Required): No /* within C-style comments — compiler warning.
-  # Rule 5.7.3 (Required): No line-splicing in // comments — compiler warning.
+  # Rule 5.7.1 (Required): no /* inside C-style comments — compiler warning.
+  # Rule 5.7.3 (Required): no line-splicing in // comments — compiler warning.
 
-  # Rule 5.10.1 (Required): User-defined identifiers shall have an
-  # appropriate form
+  # Rule 5.10.1 (Required): identifiers must have an appropriate, distinct form
   readability-identifier-naming,
 
   # ── 6 [basic] Basics ──────────────────────────────────────────────────────
-  # Rule 6.2.1 (Required): The one-definition rule shall not be violated
+  # Rule 6.2.1 (Required): no one-definition-rule violations
   misc-definitions-in-headers,
 
-  # Rule 6.4.1 (Required): An inner-scope variable shall not hide an
-  # outer-scope variable — enforced by compiler -Wshadow (CMakeLists.txt).
+  # Rule 6.4.1 (Required): an inner-scope variable must not hide an
+  # outer-scope one — enforced by compiler -Wshadow (CMakeLists.txt).
 
-  # Rule 6.7.1 (Required): Local variables shall not have static storage
-  # duration — no direct check; covered by code review.
-  # Rule 6.7.2 (Required): Global variables shall not be used
+  # Rule 6.7.1 (Required): no static storage duration for local variables
+  #   — no direct check; covered by code review.
+  # Rule 6.7.2 (Required): no global variables
   cppcoreguidelines-avoid-non-const-global-variables,
 
   # ── 7 [conv] Standard conversions ─────────────────────────────────────────
-  # Rule 7.0.3 (Required): The numerical value of a character shall not be used
+  # Rule 7.0.3 (Required): no arithmetic on the numerical value of characters
   bugprone-signed-char-misuse,
 
   # Rules 7.0.5/7.0.6 (Required): No signedness-changing promotions or
   # inappropriate numeric assignments
   bugprone-narrowing-conversions,
 
-  # Rule 7.11.2 (Required): An array passed as a function argument shall not
-  # decay to a pointer
+  # Rule 7.11.2 (Required): array function arguments must not decay to pointers
   cppcoreguidelines-pro-bounds-array-to-pointer-decay,
 
   # ── 8 [expr] Expressions ──────────────────────────────────────────────────
-  # Rule 8.2.2 (Required): C-style casts and functional notation casts shall
-  # not be used (exception: cast to void, Rule 0.1.2)
+  # Rule 8.2.2 (Required): no C-style casts or functional-notation casts
+  #   (exception: cast to void, Rule 0.1.2)
   cppcoreguidelines-pro-type-cstyle-cast,
 
-  # Rule 8.2.3 (Required): A cast shall not remove const/volatile qualification
+  # Rule 8.2.3 (Required): casts must not strip const/volatile qualification
   cppcoreguidelines-pro-type-const-cast,
 
-  # Rule 8.2.5 (Required): reinterpret_cast shall not be used
+  # Rule 8.2.5 (Required): no reinterpret_cast
   cppcoreguidelines-pro-type-reinterpret-cast,
 
-  # Rule 8.2.10 (Required): Functions shall not call themselves, directly or
-  # indirectly (no recursion)
+  # Rule 8.2.10 (Required): no recursion, direct or indirect
   misc-no-recursion,
 
-  # Rule 8.7.1 (Required): Pointer arithmetic shall not form an invalid pointer
+  # Rule 8.7.1 (Required): pointer arithmetic must stay within valid bounds
   cppcoreguidelines-pro-bounds-pointer-arithmetic,
 
-  # Rule 8.19.1 (Advisory): The comma operator should not be used
+  # Rule 8.19.1 (Advisory): avoid the comma operator
   #   — partly covered by readability-* and compiler warnings.
   readability-redundant-control-flow,
   readability-simplify-boolean-expr,
 
   # ── 9 [stmt] Statements ───────────────────────────────────────────────────
-  # Rule 9.4.1 (Required): All if ... else if constructs shall be terminated
-  # with an else — no direct check; covered by code review.
-  # Rule 9.4.2 (Required): The structure of a switch statement shall be
-  # appropriate — enforced by compiler -Wswitch-enum (CMakeLists.txt) and:
+  # Rule 9.4.1 (Required): if/else-if chains must be terminated with a final
+  # else — no direct check; covered by code review.
+  # Rule 9.4.2 (Required): switch statements must be well-formed (default
+  # label present, all enumerators handled) — enforced by compiler
+  # -Wswitch-enum (CMakeLists.txt) and:
   bugprone-branch-clone,
 
-  # Rule 9.6.1 (Advisory): The goto statement should not be used
+  # Rule 9.6.1 (Advisory): avoid goto
   cppcoreguidelines-avoid-goto,
 
   # ── 10 [dcl] Declarations ─────────────────────────────────────────────────
-  # Rule 10.2.1 (Required): An enumeration shall be defined with an explicit
-  # underlying type — covered by code review (all engine enums comply).
+  # Rule 10.2.1 (Required): enums must declare an explicit underlying type
+  #   — covered by code review (all engine enums comply).
   modernize-use-using,
   modernize-use-auto,
   modernize-use-default-member-init,
 
   # ── 11 [dcl.decl] Declarators ─────────────────────────────────────────────
-  # Rule 11.3.1 (Advisory): Variables of array type should not be declared
+  # Rule 11.3.1 (Advisory): avoid declaring variables of array type
   cppcoreguidelines-avoid-c-arrays,
 
-  # Rule 11.6.1 (Advisory): All variables should be initialized
+  # Rule 11.6.1 (Advisory): every variable should be initialized at declaration
   cppcoreguidelines-init-variables,
 
   # ── 13 [class.derived] Derived classes ────────────────────────────────────
-  # Rule 13.3.1 (Required): Overriding functions shall use virtual, override
-  # or final appropriately
+  # Rule 13.3.1 (Required): overriding functions must use virtual/override/
+  # final appropriately
   modernize-use-override,
 
   # ── 15 [special] Special member functions ─────────────────────────────────
-  # Rule 15.0.1 (Required): Special member functions shall be provided
+  # Rule 15.0.1 (Required): special member functions must be provided
   # appropriately — covered by code review (rule of zero/five applied).
-  # Rule 15.1.1 (Required): An object's dynamic type shall not be used from
-  # within its constructor or destructor
+  # Rule 15.1.1 (Required): no use of an object's dynamic type during
+  # construction or destruction
   clang-analyzer-cplusplus.VirtualCall,
   bugprone-parent-virtual-call,
 
-  # Rule 15.1.3 (Required): Single-argument constructors shall be explicit
+  # Rule 15.1.3 (Required): single-argument constructors must be explicit
   google-explicit-constructor,
 
   # ── 18 [except] Exception handling ────────────────────────────────────────
   # Exceptions are disabled globally (/EHs-c-); runtime exception rules N/A.
-  # Rule 18.4.1 (Required): Exception-unfriendly functions shall be noexcept
+  # Rule 18.4.1 (Required): functions that must not propagate exceptions are
+  # declared noexcept
   modernize-use-noexcept,
 
   # ── 19 [cpp] Preprocessing directives ─────────────────────────────────────
-  # Rule 19.0.2 (Required): Function-like macros shall not be defined
+  # Rule 19.0.2 (Required): no function-like macro definitions
   cppcoreguidelines-macro-usage,
   cppcoreguidelines-macro-to-enum,
   bugprone-macro-parentheses,
   bugprone-multiple-statement-macro,
 
   # ── 21 Library: general ───────────────────────────────────────────────────
-  # Rule 21.6.1 (Advisory) / 21.6.2 (Required): Dynamic memory should not be
-  # used / shall be managed automatically
+  # Rule 21.6.1 (Advisory) / 21.6.2 (Required): avoid dynamic memory; where
+  # used it must be managed automatically
   cppcoreguidelines-no-malloc,
   misc-new-delete-overloads,
   misc-uniqueptr-reset-release,
 
-  # Rule 21.10.1 (Required): The features of <cstdarg> shall not be used
+  # Rule 21.10.1 (Required): no <cstdarg> (variadic argument) features
   cppcoreguidelines-pro-type-vararg,
 
-  # Rule 21.10.2 (Required): The standard header <csetjmp> shall not be used
+  # Rule 21.10.2 (Required): no <csetjmp>
   cert-err52-cpp,
 
   # ── 28 Library: utilities ─────────────────────────────────────────────────
-  # Rule 28.6.1/28.6.3 (Required): Correct use of std::move / moved-from state
+  # Rule 28.6.1/28.6.3 (Required): correct use of std::move / moved-from state
   bugprone-move-forwarding-reference,
   performance-move-const-arg,
   performance-no-automatic-move,

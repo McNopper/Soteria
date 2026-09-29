@@ -26,3 +26,5 @@ gtest_discover_tests(soteria-qualification-tests
     TEST_PREFIX "qualification."
     PROPERTIES LABELS "qualification"
 )
+
+soteria_stage_runtime_dlls(soteria-qualification-tests)

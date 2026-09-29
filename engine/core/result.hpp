@@ -41,6 +41,7 @@ enum class Result : int32_t
     kVkscSurfaceLost         = -20,  ///< VK_ERROR_SURFACE_LOST_KHR detected; must recreate surface.
     kAlreadyInitialised      = -21,  ///< Init() was called on an already-initialised object.
     kVkscTimeoutFailed       = -22,  ///< vkWaitForFences timed out (possible GPU hang).
+    kVkscCacheInvalid        = -23,  ///< Pipeline cache blob failed integrity/compatibility validation.
 };
 
 /// @brief Return true when @p r represents a successful outcome.
@@ -86,6 +87,7 @@ enum class Result : int32_t
         case Result::kVkscSurfaceLost:          str = "VkscSurfaceLost";          break;
         case Result::kAlreadyInitialised:       str = "AlreadyInitialised";       break;
         case Result::kVkscTimeoutFailed:        str = "VkscTimeoutFailed";        break;
+        case Result::kVkscCacheInvalid:         str = "VkscCacheInvalid";         break;
         default:                                str = "Unknown";                  break;
     }
     return str;
