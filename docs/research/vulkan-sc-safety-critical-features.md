@@ -1,7 +1,6 @@
 # Vulkan SC Safety-Critical Rendering Engine — Feature Research Report
 
 **Project:** Soteria (Vulkan SC, ASIL-D / ISO 26262, MISRA C++:2023, avionics artificial-horizon demo)
-**Date:** 2026-09-29
 **Method:** Online research against Khronos spec/registry/blogs, the Vulkan SC 1.0 spec HTML (downloaded and searched directly), VK-GL-CTS README, vendor product pages, and standards-industry literature. Every feature below carries source URL(s) and an applicability note: **ENGINE** (Soteria's layer), **DRIVER** (the Vulkan SC implementation / vendor stack), **APP** (the application using the engine), or **PLATFORM** (OS/RTOS/hardware).
 
 ---

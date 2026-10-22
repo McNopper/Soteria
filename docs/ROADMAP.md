@@ -5,7 +5,6 @@
 > the Vulkan SC 1.0 spec, the Khronos CTS, ISO 26262 / DO-178C / ARINC 653
 > practice, and the commercial stacks (CoreAVI VkCore SC + TrueCore, DiSTI,
 > Ansys SCADE, Basemark, Altia). Deviation register: [DEVIATIONS.md](DEVIATIONS.md).
-> Last full review: 2026-10-15 (incl. cross-project tooling review).
 >
 > Legend: ✅ done · ◐ partially done · ☐ planned
 
@@ -47,7 +46,7 @@
 | P1-13 | Machine-provable architecture contract (contract block in ARCHITECTURE.md, generated drift-gated diagrams, file-level include-cycle gate, default-deny edges) | ☐ | Layer matrix proven today; closes the documented `tests → app` gap and adds cycle/default-deny rules the current gate lacks. Needs a deterministic include-resolution fix first (ambiguous `rendering/…` includes resolve hash-order-dependently), then `check_layers.py` retires — one opinion per fact |
 | P1-14 | Third-party provenance: `THIRD-PARTY.md`, Vulkan SC SDK license record, dependency-vulnerability scan, SBOM | ☐ | GoogleTest v1.15.2 = BSD-3-Clause (fetched, not vendored); Vulkan SC SDK license currently unrecorded; no copyleft in tree; release archives must keep excluding `references/` |
 | P1-15 | Frame-loop modularisation & code-size discipline | ☐ | `main()` ≈ 385 lines; duplicated device-query blocks (`vksc_context.cpp` ×3) and `Result`→health-event mappings (`main.cpp` ×4); behavior-preserving extraction only, all lanes green before/after |
-| P1-16 | Present robustness under surface geometry change (emulation window) | ☐ | Resize/move of the demo window → `vkQueuePresentKHR` failure → classified `ePresentFailed` → controlled shutdown (policy correct, reproduced 3×); fixed panels unaffected — needs swapchain-recreation handling or an explicit demo-only guard |
+| P1-16 | Present robustness under surface geometry change (emulation window) | ☐ | Resize/move of the demo window → `vkQueuePresentKHR` failure → classified `ePresentFailed` → controlled shutdown (policy correct; reliably reproduced); fixed panels unaffected — needs swapchain-recreation handling or an explicit demo-only guard |
 
 ## P2 — Differentiators / later phases
 
